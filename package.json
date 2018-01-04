@@ -1,0 +1,31 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A Sails application",
+  "dependencies": {
+    "ejs": "2.5.7",
+    "grunt": "1.0.1",
+    "grunt-contrib-clean": "1.1.0",
+    "grunt-contrib-coffee": "1.0.0",
+    "grunt-contrib-concat": "1.0.1",
+    "grunt-contrib-copy": "1.0.0",
+    "grunt-contrib-cssmin": "2.2.1",
+    "grunt-contrib-jst": "1.0.0",
+    "grunt-contrib-less": "1.4.1",
+    "grunt-contrib-uglify": "3.1.0",
+    "grunt-contrib-watch": "1.0.0",
+    "grunt-sails-linker": "~1.0.4",
+    "grunt-sync": "0.7.0",
+    "include-all": "^4.0.3",
+    "rc": "1.2.1",
+    "sails": "~0.12.13",
+    "sails-disk": "~0.10.9",
+    "sails-postgresql": "^0.11.4"
+  },
+  "scripts": {
+    "debug": "node debug app.js",
+    "start": "node app.js"
+  },
+  "main": "app.js"
+}
