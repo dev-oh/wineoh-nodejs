@@ -12,7 +12,6 @@
  */
 
 module.exports = function sendOK (data, options) {
-
   // Get access to `req`, `res`, & `sails`
   var req = this.req;
   var res = this.res;
@@ -22,7 +21,11 @@ module.exports = function sendOK (data, options) {
 
   // Set status code
   res.status(200);
-
+  return res.jsonx({
+      status: 'OK',
+      message: 'Operation Executed Successfully',
+      data: data
+  });
   // If appropriate, serve data as JSON(P)
   // If views are disabled, revert to json
   if (req.wantsJSON || sails.config.hooks.views === false) {

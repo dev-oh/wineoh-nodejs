@@ -1,0 +1,7 @@
+node_modules
+.idea
+<<<<<<< HEAD
+app/assets/lib
+=======
+app/assets/lib
+>>>>>>> 6454b9c35673454e5e3b53b233b72550615c94fe
