@@ -24,7 +24,11 @@ module.exports = function badRequest(data, options) {
 
   // Set status code
   res.status(400);
-
+  return res.jsonx({
+        status: 'ERROR',
+        message: 'Bad Request',
+        data: data
+    });
   // Log error to console
   if (data !== undefined) {
     sails.log.verbose('Sending 400 ("Bad Request") response: \n',data);

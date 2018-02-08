@@ -9,6 +9,7 @@ module.exports = {
         return new Promise((resolve,reject)=>{
             app.auth().createUserWithEmailAndPassword(email,password)
                 .then(response=>{
+                    response.sendEmailVerification();
                     return resolve(response);
                 }).catch(error=>{
                     return reject(error)

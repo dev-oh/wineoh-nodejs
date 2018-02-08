@@ -11,22 +11,14 @@ module.exports = {
     register: (req,res)=>{
         const incomingData = req.body;
         console.log(incomingData);
-        const promis = [
-            Contact.findOne({Email: incomingData.email}),
-            Lead.findOne({Email: incomingData.email})
-        ]
-        Promise.all(promis)
-        .then(_.spread((contact,lead)=>{
-            FirebaseService.createNewUser(incomingData.email, incomingData.password)
-                .then(user=>{
-                    res.ok({
-                        contact:contact,
-                        lead:lead,
-                        user: user
-                    });
-                }).catch(error=>{
-                    res.badRequest(error)
-            })
-        }))
+        FirebaseService.createNewUser(incomingData.email, incomingData.password)
+            .then(user=>{
+                res.ok({
+                    user: user
+                });
+            }).catch(error=>{
+                // console.log(error);
+            res.badRequest(error.message)
+        })
     }
 };
