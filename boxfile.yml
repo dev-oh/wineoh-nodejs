@@ -16,7 +16,9 @@ run.config:
 
 # add a database
 data.db:
-  image: nanobox/postgresql
+   image: nanobox/postgresql
+   local_only: true
+
 
 # add a web component and give it a "start" command
 web.main:
@@ -34,7 +36,3 @@ web.main:
 # add a worker component and give it a "start" command
 # worker.main:
 #   start: COMMAND TO START WORKER
-nanobox evar add DATA_EXTERNAL_HOST="35.202.238.5"
-nanobox evar add DATA_EXTERNAL_USER="WinoSkyvia"
-nanobox evar add DATA_EXTERNAL_PASS="W1ne-0h!"
-nanobox evar add DATA_EXTERNAL_NAME="WINO"

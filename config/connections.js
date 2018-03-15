@@ -84,10 +84,15 @@ module.exports.connections = {
 
     postgreSqlProd: {
         adapter: 'sails-postgresql',
-        host: process.env.DATA_EXTERNAL_HOST,
-        user: process.env.DATA_EXTERNAL_USER, // optional
-        password: process.env.DATA_EXTERNAL_PASS, // optional
-        database: process.env.DATA_EXTERNAL_NAME //optional
+        host: '35.202.238.5',
+        user: 'WinoSkyvia', // optional
+        password: 'W1ne-0h!', // optional
+        database: 'WINO' //optional
+      //  adapter: 'sails-postgresql',
+     //   host: process.env.DATA_EXTERNAL_HOST,
+     //   user: process.env.DATA_EXTERNAL_USER, // optional
+      //  password: process.env.DATA_EXTERNAL_PASS, // optional
+      //  database: process.env.DATA_EXTERNAL_NAME //optional
     },
 
 
