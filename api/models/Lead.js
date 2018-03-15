@@ -36,6 +36,8 @@ module.exports = {
         Description: 'string',
         ART__c: 'string',
         Address: 'string',
+        uid__c: 'string',
+        // Id: 'string',
         IsDeleted: {
              type: 'boolean',
              defaultsTo: false
@@ -49,7 +51,7 @@ module.exports = {
         CreatedById: 'string',
         IsUnreadByOwner: {
             type: 'boolean',
-            defaultsTo: false
+            defaultsTo: true
         },
         LastModifiedById: 'string',
         No_Show_CP__c: {
@@ -69,5 +71,13 @@ module.exports = {
             type: 'boolean',
             defaultsTo: false
         },
+    },
+    beforeCreate: (values,next)=>{
+        values.Name = `${values.FirstName} ${values.LastName}`;
+        values.OwnerId = '';
+        values.CreatedById = '';
+        values.LastModifiedById = '';
+        values.SystemModstamp = '2017-11-07 22:01:58';
+        next();
     }
 };

@@ -18,8 +18,8 @@ module.exports = {
    ***************************************************************************/
 
   models: {
-    // connection: 'postgreSql'
-    connection: 'localDiskDb'
+    connection: 'postgreSql'
+    // connection: 'localDiskDb'
   }
 
 };

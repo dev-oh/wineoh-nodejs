@@ -6,6 +6,12 @@ module.exports = {
         projectId: 'web-app-a4b10',
         storageBucket: 'web-app-a4b10.appspot.com',
         messagingSenderId: '1018721793832'
-
+    },
+    salesForceConfig : {
+        username: 'kimberly.valencia@wine-oh.io',
+        password: 'W1n0w1n0'
+    },
+    segmentConfig: {
+        writeKey: 'jEssvE9eWKHUiAcD8TtaifBzfy4vQRZz'
     }
 }

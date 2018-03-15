@@ -27,9 +27,10 @@ module.exports = {
         Title: 'string',
         Department: 'string',
         StatusPerson__c: 'string',
+        uid__c: 'string',
         IsDeleted: {
             type: 'boolean',
-            defaultsTo: false
+            // defaultsTo: false
         }
     }
 };

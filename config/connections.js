@@ -18,7 +18,7 @@
  * For more information on configuration, check out:
  * http://sailsjs.org/#!/documentation/reference/sails.config/sails.config.connections.html
  */
-
+var config = require('./config');
 module.exports.connections = {
 
     /***************************************************************************
@@ -80,7 +80,15 @@ module.exports.connections = {
         user: 'WinoSkyvia', // optional
         password: 'W1ne-0h!', // optional
         database: 'WINO' //optional
-    }
+    },
+
+    postgreSqlProd: {
+        adapter: 'sails-postgresql',
+        host: process.env.DATA_EXTERNAL_HOST,
+        user: process.env.DATA_EXTERNAL_USER, // optional
+        password: process.env.DATA_EXTERNAL_PASS, // optional
+        database: process.env.DATA_EXTERNAL_NAME //optional
+    },
 
 
     /***************************************************************************
