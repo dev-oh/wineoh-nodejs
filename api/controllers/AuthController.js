@@ -35,9 +35,64 @@ module.exports = {
         Promise.all(promise)
             .then(_.spread((contact, lead) => {
                 if (contact) {
-                }
-                else if (lead) {
+                    sails.log.info('contact found');
+                    if (contact.StatusPerson__c === 'UNPROVISIONED') {
+                        sails.log.info('creating firebase account');
+                        FirebaseService.createNewUser(req.body.email, req.body.password)
+                            .then(firebaseUser => {
+                                sails.log.info('firebase user created');
+                                user.uid__c = firebaseUser.uid;
+                                sails.log.info('updating sfdc lead');
+                                conn.sobject('Lead').update(user, (error, updatedRecord) => {
+                                    if (error || !updatedRecord.success)
+                                        sails.log.info("Not able")
+                                        return res.serverError("Unable To Bind Firebase Id With Account");
+                                    sails.log.info('sfdc lead updated');
+                                    console.log({updatedRecord: updatedRecord});
+                                    sails.log.info('updating postgre lead');
+                                    Lead.update({Email: user.Email}, user).then(updatedLead => {
+                                        sails.log.info('postgre lead updated');
+                                        user.StatisPerson__c = 'STAGED';
+                                        sails.log.info('Calling Segment');
+                                        SegmentService.identifyTrait(uid, user);
+                                        SegmentService.track(uid, user.Email, 'Lead Updated');
+                                        res.ok(updatedLead);
+                                    });
+                                })
+                            }).catch(error => {
+                            if (error.code === 'auth/email-already-in-use') {
+                                sails.log.info("user already exist");
+                                return res.ok('alreadyExist');
+                            }
+                            return res.badRequest(error);
+                        });
+                    } else if (
+                        contact.StatusPerson__c === 'STAGED' ||
+                        contact.StatusPerson__c === 'RECOVERY' ||
+                        contact.StatusPerson__c === 'LOCKED_OUT' ||
+                        contact.StatusPerson__c === 'ACTIVE'
+                    ) {
+                        // logic here
+                        res.ok('goSignIn');
+                    } else if (
+                        contact.StatusPerson__c === 'PROVISIONED' ||
+                        contact.StatusPerson__c === 'PW_EXPIRED'
+                    ) {
+                        res.ok('sendPassword')
+                    } else if (
+                        contact.StatusPerson__c === 'SUSPENDED' ||
+                        contact.StatusPerson__c === 'DEPROVISIONED'
+                    ) {
+                        res.ok('contactSupport');
+                    }
+                } else if (lead) {
                     sails.log.info("lead found");
+                    sails.log.info('checking if account exist');
+                    if (lead.uid__c) {
+                        sails.log.info('account already exist');
+                        return res.ok('alreadyExist');
+                    }
+                    sails.log.info('account not exist');
                     sails.log.info('creating sfdc connection');
                     conn.login(salsForceConfig.username, salsForceConfig.password, function (err, resp) {
                         sails.log.info('sfdc connection established');
@@ -53,7 +108,6 @@ module.exports = {
                             delete lead.SystemModstamp;
                             delete lead.CreatedDate;
                             sails.log.info('updating existing record');
-                            console.log(lead);
                             conn.sobject('Lead').update(user, (error, updatedRecord) => {
                                 if (error) {
                                     sails.log.info('unable to update record');
@@ -70,7 +124,9 @@ module.exports = {
                                         user.uid__c = firebaseUser.uid;
                                         sails.log.info('updating sfdc lead');
                                         conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                                            if (error || !updatedRecord.success) return res.serverError("Unable To Bind Firebase Id With Account");
+                                            if (error || !updatedRecord.success
+                                            )
+                                                return res.serverError("Unable To Bind Firebase Id With Account");
                                             sails.log.info('sfdc lead updated');
                                             console.log({updatedRecord: updatedRecord});
                                             sails.log.info('updating postgre lead');
@@ -82,9 +138,14 @@ module.exports = {
                                                 SegmentService.track(uid, user.Email, 'Lead Updated');
                                                 res.ok(updatedLead);
                                             });
-
                                         })
-                                    });
+                                    }).catch(error => {
+                                    if (error.code === 'auth/email-already-in-use') {
+                                        sails.log.info("user already exist");
+                                        return res.ok('alreadyExist');
+                                    }
+                                    return res.badRequest(error);
+                                });
                             });
                         });
                     });
@@ -113,7 +174,9 @@ module.exports = {
                                         user.uid__c = firebaseUser.uid;
                                         sails.log.info('updating sfdc lead');
                                         conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                                            if (error || !updatedRecord.success) return res.serverError("Unable To Bind Firebase Id With Account");
+                                            if (error || !updatedRecord.success
+                                            )
+                                                return res.serverError("Unable To Bind Firebase Id With Account");
                                             sails.log.info('sfdc lead updated');
                                             console.log({updatedRecord: updatedRecord});
                                             sails.log.info('updating postgre lead');
@@ -125,9 +188,14 @@ module.exports = {
                                                 SegmentService.track(uid, user.Email, 'Lead Updated');
                                                 res.ok(updatedLead);
                                             });
-
                                         })
-                                    })
+                                    }).catch(error => {
+                                    if (error.code === 'auth/email-already-in-use') {
+                                        sails.log.info("user already exist");
+                                        return res.ok('alreadyExist');
+                                    }
+                                    return res.badRequest(error);
+                                })
                             }).catch(error => {
                                 sails.log.info("unable to insert lead into postgre");
                                 console.log(error);
@@ -205,7 +273,6 @@ module.exports = {
                                 })
                             });
                         })
-
                 }
                 else {
                     console.log("Nothing Found");
