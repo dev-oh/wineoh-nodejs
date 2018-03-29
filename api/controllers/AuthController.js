@@ -46,7 +46,7 @@ module.exports = {
                                 conn.sobject('Lead').update(user, (error, updatedRecord) => {
                                     if (error || !updatedRecord.success)
                                         sails.log.info("Not able")
-                                        return res.serverError("Unable To Bind Firebase Id With Account");
+                                    return res.serverError("Unable To Bind Firebase Id With Account");
                                     sails.log.info('sfdc lead updated');
                                     console.log({updatedRecord: updatedRecord});
                                     sails.log.info('updating postgre lead');
@@ -63,6 +63,10 @@ module.exports = {
                             if (error.code === 'auth/email-already-in-use') {
                                 sails.log.info("user already exist");
                                 return res.ok('alreadyExist');
+                            }
+                            if (error.code === 'auth/weak-password') {
+                                sails.log.info("weak password");
+                                return res.ok({error: true,message: error.message});
                             }
                             return res.badRequest(error);
                         });
@@ -144,6 +148,10 @@ module.exports = {
                                         sails.log.info("user already exist");
                                         return res.ok('alreadyExist');
                                     }
+                                    if (error.code === 'auth/weak-password') {
+                                        sails.log.info("weak password");
+                                        return res.ok({error: true,message: error.message});
+                                    }
                                     return res.badRequest(error);
                                 });
                             });
@@ -194,6 +202,12 @@ module.exports = {
                                         sails.log.info("user already exist");
                                         return res.ok('alreadyExist');
                                     }
+                                    if (error.code === 'auth/weak-password') {
+                                        sails.log.info("weak password");
+                                        return res.ok({error: true,message: error.message});
+                                    }
+                                    console.log('>>>');
+                                    console.log(error);
                                     return res.badRequest(error);
                                 })
                             }).catch(error => {
