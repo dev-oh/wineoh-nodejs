@@ -10,8 +10,13 @@ var shortId = require('shortid');
 var conn = new jsforce.Connection();
 
 module.exports = {
-    test: (req, res) => {
-        res.ok("Works");
+    signIn: (req,res)=>{
+        FirebaseService.verifyIdToken(req.body.token)
+            .then(response=>{
+                return res.ok(response);
+            }).catch(error=>{
+                return res.ok(error);
+        })
     },
     signUp: (req, res) => {
         console.log("Signing Up");
