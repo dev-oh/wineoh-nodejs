@@ -11,7 +11,7 @@
  *          - pass string to render specified view
  */
 
-module.exports = function sendOK (data, options) {
+module.exports = function sendOK (data,message,status, options) {
   // Get access to `req`, `res`, & `sails`
   var req = this.req;
   var res = this.res;
@@ -22,8 +22,8 @@ module.exports = function sendOK (data, options) {
   // Set status code
   res.status(200);
   return res.jsonx({
-      status: 'OK',
-      message: 'Operation Executed Successfully',
+      status: status || 'OK',
+      message: message || 'Operation Executed Successfully',
       data: data
   });
   // If appropriate, serve data as JSON(P)
