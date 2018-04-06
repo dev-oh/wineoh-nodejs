@@ -425,7 +425,7 @@ module.exports = {
                     sails.log.info('checking if account exist');
                     if (lead.uid__c) {
                         sails.log.info('account already exist');
-                        return res.ok('alreadyExist');
+                        return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
                     }
                     sails.log.info('account not exist');
                     sails.log.info('creating sfdc connection');
@@ -449,9 +449,6 @@ module.exports = {
                                     return res.badRequest(error);
                                 }
                                 sails.log.info('existing record updated');
-                                sails.log.info('Calling Segment');
-                                SegmentService.identifyTrait(uid, user);
-                                SegmentService.track(uid, user.Email, 'Lead Updated');
                                 sails.log.info('creating firebase user');
                                 Lead.update({Email: user.Email}, user).then(updatedLead => {
                                     sails.log.info('postgre lead updated');
@@ -470,6 +467,7 @@ module.exports = {
                         sails.log.info('inserting data to "Lead" table');
                         conn.sobject('Lead').create(user, (error, createdUser) => {
                             if (error) {
+                                if(error.errorCode === 'DUPLICATES_DETECTED') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
                                 console.log(error)
                                 return res.badRequest(error);
                             }
@@ -492,5 +490,38 @@ module.exports = {
                     })
                 }
             }))
+    },
+    attachUid: (req,res)=>{
+        var user = {};
+        sails.log.info("Attaching");
+        FirebaseService.verifyIdToken(req.body.idToken)
+            .then(response => {
+                console.log(response)
+                conn.login(salsForceConfig.username, salsForceConfig.password, function (err, resp) {
+                    sails.log.info('sfdc connection established');
+                    sails.log.info('selecting data from sfdc');
+                    conn.sobject('Lead').find({Email: response.email}).execute((error, record) => {
+                        if (error) return res.badRequest(error);
+                        sails.log.info('data fetched from sfdc');
+                        console.log(record);
+                        user.Id = record[0].Id;
+                        console.log("CHK1");
+                        user.uid__c= response.uid;
+                        console.log('CHK2');
+                        sails.log.info('updating existing record');
+                        conn.sobject('Lead').update(user, (error, updatedRecord) => {
+                            if (error) {
+                                sails.log.info('unable to update record');
+                                return res.badRequest(error);
+                            }
+                            sails.log.info('existing record updated');
+                            Lead.update({Email: response.email}, user).then(updatedLead => {
+                                sails.log.info('postgre lead updated');
+                                res.ok(updatedLead);
+                            });
+                        });
+                    });
+                });
+            })
     }
 };
