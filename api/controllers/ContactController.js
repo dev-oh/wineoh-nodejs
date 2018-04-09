@@ -6,6 +6,8 @@
  */
 
 module.exports = {
-	
+    test : (req,res)=>{
+        res.ok(req.user);
+    }
 };
 
