@@ -6,18 +6,26 @@ var analytics = new Analytics(config.segmentConfig.writeKey);
 
 module.exports = {
     identifyTrait: (uid,trait)=>{
+        console.log(uid);
         analytics.identify({
             anonymousId: uid,
             traits: trait
         });
     },
-    track: (uid,email,event)=>{
+    track: (uid,event,email)=>{
         analytics.track({
             anonymousId: uid,
             event: event,
             properties: {
                 Email:email
             }
+        });
+    },
+    trackBy: (uid,event,properties)=>{
+        analytics.track({
+            anonymousId: uid,
+            event: event,
+            properties: properties
         });
     }
 }
