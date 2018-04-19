@@ -2,7 +2,6 @@
 
 var jsforce = require('jsforce');
 var Creds = require('./../../config/secrets/creds');
-var shortId = require('shortid');
 module.exports = {
     createLead: (req, res) => {
         var user = {
@@ -55,5 +54,28 @@ module.exports = {
                 }
             });
         })
+    },
+    acceptToS: (req,res)=>{
+        var conn = new jsforce.Connection();
+        var user = {
+            Email: req.body.email,
+            TOSAcceptanceDate__c: Date.now(),
+            TOSAcceptanceIP__c: req.ip
+        }
+
+        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+            conn.query("SELECT Id FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {
+                console.log('Data Selected');
+                if (!result.totalSize) return res.ok('User Not Found','NOT_FOUND','FAIL');
+                result = result.records[0];
+                user.Id = result.Id;
+                console.log(user);
+                SegmentService.trackBy(user.Id,'TOS Accepted',{Id: user.Id,Email: user.Email});
+                conn.sobject("Lead").update(user, function (err, ret) {
+                    if(err) return res.ok(err,'ERROR','FAIL');
+                    return res.ok(ret)
+                });
+            });
+        });
     }
 }
