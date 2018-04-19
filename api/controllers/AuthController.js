@@ -518,64 +518,82 @@ module.exports = {
                     }
                     sails.log.info('account not exist');
                     sails.log.info('creating sfdc connection');
-                    conn.login(salsForceConfig.username, salsForceConfig.password, function (err, resp) {
+                    conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                         sails.log.info('sfdc connection established');
-                        lead = _.pickBy(lead, _.identity);
-                        sails.log.info('selecting data from sfdc');
-                        conn.sobject('Lead').find({Email: lead.Email}).execute((error, record) => {
-                            if (error) return res.badRequest(error);
-                            sails.log.info('data fetched from sfdc');
-                            lead.Id = record[0].Id;
-                            user.Id = record[0].Id;
-                            delete lead.LastModifiedDate;
-                            delete lead.Name;
-                            delete lead.SystemModstamp;
-                            delete lead.CreatedDate;
-                            sails.log.info('updating existing record');
-                            conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                                if (error) {
-                                    sails.log.info('unable to update record');
-                                    return res.badRequest(error);
-                                }
-                                sails.log.info('existing record updated');
-                                sails.log.info('creating firebase user');
-                                Lead.update({Email: user.Email}, user).then(updatedLead => {
-                                    sails.log.info('postgre lead updated');
-                                    res.ok(updatedLead);
-                                });
-                            });
+                        conn.query("SELECT Id,uid__c FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {
+                            result = result.records[0];
+                            console.log(result)
+                            if(result.uid__c) return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
+                            return res.ok();
                         });
+
+
+                        // lead = _.pickBy(lead, _.identity);
+                        // sails.log.info('selecting data from sfdc');
+                        // conn.sobject('Lead').find({Email: lead.Email}).execute((error, record) => {
+                        //     if (error) return res.badRequest(error);
+                        //     sails.log.info('data fetched from sfdc');
+                        //     lead.Id = record[0].Id;
+                        //     user.Id = record[0].Id;
+                        //     delete lead.LastModifiedDate;
+                        //     delete lead.Name;
+                        //     delete lead.SystemModstamp;
+                        //     delete lead.CreatedDate;
+                        //     sails.log.info('updating existing record');
+                        //     conn.sobject('Lead').update(user, (error, updatedRecord) => {
+                        //         if (error) {
+                        //             sails.log.info('unable to update record');
+                        //             return res.badRequest(error);
+                        //         }
+                        //         sails.log.info('existing record updated');
+                        //         sails.log.info('creating firebase user');
+                        //         Lead.update({Email: user.Email}, user).then(updatedLead => {
+                        //             sails.log.info('postgre lead updated');
+                        //             res.ok(updatedLead);
+                        //         });
+                        //     });
+                        // });
                     });
 
                 }
                 else {
                     sails.log.info("no contact or lead");
                     sails.log.info('signing in to sfdc');
-                    conn.login(salsForceConfig.username, salsForceConfig.password, function (err, resp) {
+                    conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                         sails.log.info('signed in to sfdc');
-                        sails.log.info('inserting data to "Lead" table');
-                        conn.sobject('Lead').create(user, (error, createdUser) => {
-                            if (error) {
-                                if(error.errorCode === 'DUPLICATES_DETECTED') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                                console.log(error)
-                                return res.badRequest(error);
-                            }
-                            sails.log.info('data inserted into "Lead"');
-                            user.Id = createdUser.id;
-                            sails.log.info('Calling Segment');
-                            // SegmentService.identifyTrait(uid, user);
-                            // SegmentService.track(uid, user.Email, 'Lead Added');
-                            sails.log.info('Inserting data into PostgreSQL (Lead)');
-                            Lead.create(user).then(createdLead => {
-                                sails.log.info('data inserted into PostgreSQL');
-                                sails.log.info('creating firebase user');
-                                res.ok(createdLead)
-                            }).catch(error => {
-                                sails.log.info("unable to insert lead into postgre");
-                                console.log(error);
-                                res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
-                            });
+                        conn.query("SELECT Id,uid__c FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {
+                            result = result.records[0];
+                            console.log(result)
+                            if(result.uid__c) return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
+                            return res.ok();
                         });
+
+
+
+
+                        // sails.log.info('inserting data to "Lead" table');
+                        // conn.sobject('Lead').create(user, (error, createdUser) => {
+                        //     if (error) {
+                        //         if(error.errorCode === 'DUPLICATES_DETECTED') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
+                        //         console.log(error)
+                        //         return res.badRequest(error);
+                        //     }
+                        //     sails.log.info('data inserted into "Lead"');
+                        //     user.Id = createdUser.id;
+                        //     sails.log.info('Calling Segment');
+                        //     // SegmentService.identifyTrait(uid, user);
+                        //     // SegmentService.track(uid, user.Email, 'Lead Added');
+                        //     sails.log.info('Inserting data into PostgreSQL (Lead)');
+                        //     Lead.create(user).then(createdLead => {
+                        //         sails.log.info('data inserted into PostgreSQL');
+                        //         sails.log.info('creating firebase user');
+                        //         res.ok(createdLead)
+                        //     }).catch(error => {
+                        //         sails.log.info("unable to insert lead into postgre");
+                        //         console.log(error);
+                        //         res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
+                        //     });
+                        // });
                     })
                 }
             }))
@@ -596,6 +614,7 @@ module.exports = {
                         user.Id = record[0].Id;
                         console.log("CHK1");
                         user.uid__c= response.uid;
+                        user.StatusPerson__c = 'STAGED';
                         console.log('CHK2');
                         sails.log.info('updating existing record');
                         conn.sobject('Lead').update(user, (error, updatedRecord) => {
