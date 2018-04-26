@@ -257,6 +257,7 @@ module.exports = {
                 Promise.all(promise)
                     .then(_.spread((contact, lead) => {
                         if (contact) {
+
                             sails.log.info('contact found');
                             if (contact.StatusPerson__c === 'UNPROVISIONED') {
 
@@ -519,11 +520,13 @@ module.exports = {
                     uid__c: firebaseUser.uid,
                     StatusPerson__c : 'STAGED'
                 };
+                if(firebaseUser.email !== user.Email) return res.ok('Please Authenticate With Same Email',"EMAIL_MISMATCH","FAIL");
                 Promise.all([
                     Contact.findOne({Email: user.Email}),
                     Lead.find({Email: user.Email})
                 ]).then(_.spread((postgreContact,postgreLeads)=>{
                     if(postgreContact) {
+                        console.log("Contact Found");
                         if (postgreContact.StatusPerson__c === 'UNPROVISIONED') {
                             conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                                 conn.sobject('Lead').find({Email: user.Email})
@@ -558,25 +561,28 @@ module.exports = {
                         }
                     }else if(postgreLeads.length){
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
-                            SfdcService.mergeSfdcLeads(postgreLead, (masterLead, dupIds) => {
-                                var promise_I = [];
-                                if (dupIds) {
-                                    promise_I.push(conn.sobject('Lead').update(masterLeadLead));
-                                    promise_I.push(conn.sobject('Lead').del(dupIds));
-                                }
-                                Promise.all(promise_I)
-                                    .then(data => {
-                                        Lead.update({Email: user.Email},user);
-                                        user.Id = masterLead.Id;
-                                        conn.sobject('Lead').update(masterLeadLead)
-                                            .then(updatedSfdcLead => {
-                                                SegmentService.identifyTrait(user.uid__c, user);
-                                                SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
-                                                FullContactService.call(user.Email);
-                                                res.ok('Account Created', 'CREATED');
-                                            });
+                            conn.sobject('Lead').find({Email: user.Email})
+                                .then(sfdcLeads=>{
+                                    SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, dupIds) => {
+                                        var promise_I = [];
+                                        if (dupIds) {
+                                            promise_I.push(conn.sobject('Lead').update(masterLeadLead));
+                                            promise_I.push(conn.sobject('Lead').del(dupIds));
+                                        }
+                                        Promise.all(promise_I)
+                                            .then(data => {
+                                                Lead.update({Email: user.Email},user);
+                                                user.Id = masterLead.Id;
+                                                conn.sobject('Lead').update(user)
+                                                    .then(updatedSfdcLead => {
+                                                        SegmentService.identifyTrait(user.uid__c, user);
+                                                        SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
+                                                        FullContactService.call(user.Email);
+                                                        res.ok('Account Created', 'CREATED');
+                                                    });
+                                            })
                                     })
-                            })
+                                });
                         })
                     }else{
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
