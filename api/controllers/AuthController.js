@@ -286,22 +286,6 @@ module.exports = {
 
                                     });
                                 });
-
-
-                                // sails.log.info('creating firebase account');
-                                // sails.log.info('updating sfdc lead');
-                                // conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                                //     if (error || !updatedRecord.success)
-                                //         sails.log.info("Not able")
-                                //     return res.serverError("Unable To Bind Firebase Id With Account");
-                                //     sails.log.info('sfdc lead updated');
-                                //     console.log({updatedRecord: updatedRecord});
-                                //     sails.log.info('updating postgre lead');
-                                //     Lead.update({Email: user.Email}, user).then(updatedLead => {
-                                //         sails.log.info('postgre lead updated');
-                                //         res.ok(updatedLead);
-                                //     });
-                                // })
                             } else if (
                                 contact.StatusPerson__c === 'STAGED' ||
                                 contact.StatusPerson__c === 'RECOVERY' ||
@@ -357,35 +341,6 @@ module.exports = {
 
                                 });
 
-
-
-                                // lead = _.pickBy(lead, _.identity);
-                                // sails.log.info('selecting data from sfdc');
-                                // conn.sobject('Lead').find({Email: lead.Email}).execute((error, record) => {
-                                //     if (error) return res.badRequest(error);
-                                //     sails.log.info('data fetched from sfdc');
-                                //     lead.Id = record[0].Id;
-                                //     user.Id = record[0].Id;
-                                //     delete lead.LastModifiedDate;
-                                //     delete lead.Name;
-                                //     delete lead.SystemModstamp;
-                                //     delete lead.CreatedDate;
-                                //     sails.log.info('updating existing record');
-                                //     conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                                //         if (error) {
-                                //             sails.log.info('unable to update record');
-                                //             return res.badRequest(error);
-                                //         }
-                                //         sails.log.info('existing record updated');
-                                //         sails.log.info('creating firebase user');
-                                //         Lead.update({Email: user.Email}, user).then(updatedLead => {
-                                //             if(updatedLead.length) updatedLead = updatedLead[0];
-                                //             sails.log.info('postgre lead updated');
-                                //             FullContactService.call(updatedLead.Email);
-                                //             res.ok(_.pickBy(updatedLead, _.identity));
-                                //         });
-                                //     });
-                                // });
                             });
 
                         }
@@ -412,38 +367,12 @@ module.exports = {
                                         sails.log.info('Lead Updated');
                                         SegmentService.identifyTrait(ret.id, user);
                                         SegmentService.trackBy(ret.id, "Lead Staged", {Email: user.Email,Id: ret.id});
+                                        FirebaseService.createUser(req.body.idToken);
                                         Lead.create(user).then(createdLead => {});
                                         return res.ok(ret);
                                     });
 
                                 });
-
-
-
-
-                                // sails.log.info('signed in to sfdc');
-                                // sails.log.info('inserting data to "Lead" table');
-                                // conn.sobject('Lead').create(user, (error, createdUser) => {
-                                //     if (error) {
-                                //         console.log(error)
-                                //         return res.badRequest(error);
-                                //     }
-                                //     sails.log.info('data inserted into "Lead"');
-                                //     user.Id = createdUser.id;
-                                //     sails.log.info('Calling Segment');
-                                //     // SegmentService.identifyTrait(uid, user);
-                                //     // SegmentService.track(uid, user.Email, 'Lead Added');
-                                //     sails.log.info('Inserting data into PostgreSQL (Lead)');
-                                //     Lead.create(user).then(createdLead => {
-                                //         sails.log.info('data inserted into PostgreSQL');
-                                //         FullContactService.call(createdLead.Email)
-                                //         res.ok(_.pickBy(createdLead, _.identity))
-                                //     }).catch(error => {
-                                //         sails.log.info("unable to insert lead into postgre");
-                                //         console.log(error);
-                                //         res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
-                                //     });
-                                // });
                             })
                         }
                     }))
@@ -526,33 +455,6 @@ module.exports = {
                             if(result.uid__c) return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
                             return res.ok();
                         });
-
-
-                        // lead = _.pickBy(lead, _.identity);
-                        // sails.log.info('selecting data from sfdc');
-                        // conn.sobject('Lead').find({Email: lead.Email}).execute((error, record) => {
-                        //     if (error) return res.badRequest(error);
-                        //     sails.log.info('data fetched from sfdc');
-                        //     lead.Id = record[0].Id;
-                        //     user.Id = record[0].Id;
-                        //     delete lead.LastModifiedDate;
-                        //     delete lead.Name;
-                        //     delete lead.SystemModstamp;
-                        //     delete lead.CreatedDate;
-                        //     sails.log.info('updating existing record');
-                        //     conn.sobject('Lead').update(user, (error, updatedRecord) => {
-                        //         if (error) {
-                        //             sails.log.info('unable to update record');
-                        //             return res.badRequest(error);
-                        //         }
-                        //         sails.log.info('existing record updated');
-                        //         sails.log.info('creating firebase user');
-                        //         Lead.update({Email: user.Email}, user).then(updatedLead => {
-                        //             sails.log.info('postgre lead updated');
-                        //             res.ok(updatedLead);
-                        //         });
-                        //     });
-                        // });
                     });
 
                 }
@@ -567,33 +469,6 @@ module.exports = {
                             if(result.uid__c) return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
                             return res.ok();
                         });
-
-
-
-
-                        // sails.log.info('inserting data to "Lead" table');
-                        // conn.sobject('Lead').create(user, (error, createdUser) => {
-                        //     if (error) {
-                        //         if(error.errorCode === 'DUPLICATES_DETECTED') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                        //         console.log(error)
-                        //         return res.badRequest(error);
-                        //     }
-                        //     sails.log.info('data inserted into "Lead"');
-                        //     user.Id = createdUser.id;
-                        //     sails.log.info('Calling Segment');
-                        //     // SegmentService.identifyTrait(uid, user);
-                        //     // SegmentService.track(uid, user.Email, 'Lead Added');
-                        //     sails.log.info('Inserting data into PostgreSQL (Lead)');
-                        //     Lead.create(user).then(createdLead => {
-                        //         sails.log.info('data inserted into PostgreSQL');
-                        //         sails.log.info('creating firebase user');
-                        //         res.ok(createdLead)
-                        //     }).catch(error => {
-                        //         sails.log.info("unable to insert lead into postgre");
-                        //         console.log(error);
-                        //         res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
-                        //     });
-                        // });
                     })
                 }
             }))
@@ -632,5 +507,99 @@ module.exports = {
                 });
             })
     },
+    mRegister: (req,res)=>{
+        FirebaseService.verifyIdToken(req.body.idToken)
+            .then(firebaseUser=>{
+                var user = {
+                    LastName: req.body.lastName || 'Unknown',
+                    FirstName: req.body.firstName || '',
+                    RecordTypeId: req.body.recordTypeId ||  '01228000000SbEwAAK',
+                    Email: req.body.email,
+                    Status: 'Interest',
+                    uid__c: firebaseUser.uid,
+                    StatusPerson__c : 'STAGED'
+                };
+                Promise.all([
+                    Contact.findOne({Email: user.Email}),
+                    Lead.find({Email: user.Email})
+                ]).then(_.spread((postgreContact,postgreLeads)=>{
+                    if(postgreContact) {
+                        if (postgreContact.StatusPerson__c === 'UNPROVISIONED') {
+                            conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                                conn.sobject('Lead').find({Email: user.Email})
+                                    .then(sfdcLeads=>{
+                                        Lead.update({Email: user.Email},user);
+                                        user.Id = sfdcLeads[0].Id;
+                                        conn.sobject('Lead').update(user);
+                                        SegmentService.identifyTrait(user.uid__c, user);
+                                        SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
+                                        FullContactService.call(user.Email);
+                                        res.ok('Account Created', 'CREATED');
+                                    })
+                            });
+                            } else if (
+                            postgreContact.StatusPerson__c === 'STAGED' ||
+                            postgreContact.StatusPerson__c === 'RECOVERY' ||
+                            postgreContact.StatusPerson__c === 'LOCKED_OUT' ||
+                            postgreContact.StatusPerson__c === 'ACTIVE'
+                        ) {
+                            // logic here
+                            res.ok('User can sign in', 'SIGN_IN');
+                        } else if (
+                            postgreContact.StatusPerson__c === 'PROVISIONED' ||
+                            postgreContact.StatusPerson__c === 'PW_EXPIRED'
+                        ) {
+                            res.ok('Reset Password', 'RESET_PASSWORD');
+                        } else if (
+                            postgreContact.StatusPerson__c === 'SUSPENDED' ||
+                            postgreContact.StatusPerson__c === 'DEPROVISIONED'
+                        ) {
+                            res.ok('Please Contact Support', 'CONTACT_SUPPORT');
+                        }
+                    }else if(postgreLeads.length){
+                        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                            SfdcService.mergeSfdcLeads(postgreLead, (masterLead, dupIds) => {
+                                var promise_I = [];
+                                if (dupIds) {
+                                    promise_I.push(conn.sobject('Lead').update(masterLeadLead));
+                                    promise_I.push(conn.sobject('Lead').del(dupIds));
+                                }
+                                Promise.all(promise_I)
+                                    .then(data => {
+                                        Lead.update({Email: user.Email},user);
+                                        user.Id = masterLead.Id;
+                                        conn.sobject('Lead').update(masterLeadLead)
+                                            .then(updatedSfdcLead => {
+                                                SegmentService.identifyTrait(user.uid__c, user);
+                                                SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
+                                                FullContactService.call(user.Email);
+                                                res.ok('Account Created', 'CREATED');
+                                            });
+                                    })
+                            })
+                        })
+                    }else{
+                        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                            conn.sobject('Lead').create(user)
+                                .then(sfdcLead=>{
+                                    SegmentService.identifyTrait(user.uid__c,user);
+                                    SegmentService.track(user.uid__c,'Lead Added',user.Email);
+                                    FullContactService.call(user.Email);
+                                    Lead.create(user).catch(error=>{
+                                        console.log(error);
+                                    });
+                                    res.ok('Account Created','CREATED');
+                                }).catch(error=>{
+                                    console.error(error);
+                                    res.ok(error,"SFDC Error","FAIL");
+                            })
+                        })
+                    }
+                }));
+            }).catch(error=>{
+                console.log(error)
+                res.ok(error,"Token_Error",'FAIL')
+        })
+    }
 
 };

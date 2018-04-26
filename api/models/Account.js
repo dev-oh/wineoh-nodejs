@@ -16,7 +16,8 @@ module.exports = {
     autoUpdatedAt: false,
     attributes: {
         MasterRecordId: 'string',
-        Name: 'string'
+        Name: 'string',
+        Domain__c: 'string'
     }
 };
 
