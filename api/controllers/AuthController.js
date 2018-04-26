@@ -368,7 +368,8 @@ module.exports = {
                                         sails.log.info('Lead Updated');
                                         SegmentService.identifyTrait(ret.id, user);
                                         SegmentService.trackBy(ret.id, "Lead Staged", {Email: user.Email,Id: ret.id});
-                                        FirebaseService.createUser(req.body.idToken);
+                                        // FirebaseService.createUser(req.body.idToken);
+                                        FirebaseService.createUserViaUid(user.uid__c,{name: response.name,email: response.email,domain: user.Website})
                                         Lead.create(user).then(createdLead => {});
                                         return res.ok(ret);
                                     });

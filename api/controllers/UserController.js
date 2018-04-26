@@ -11,14 +11,16 @@ module.exports = {
         console.log("fetching user from firebase");
         FirebaseService.getUser(req.user.uid)
             .then(data => {
+                var rtdbUser = data.val();
+                console.log(rtdbUser);
                 console.log("fetched");
-                if (data.memberId) {
-                    res.ok(data);
+                if (rtdbUser.memberId) {
+                    res.ok(rtdbUser);
                 } else {
                     console.log('connecting to sfdc');
                     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                         console.log('connected');
-                        promise.push(Account.findOne({Domain__c: req.user.email}));
+                        promise.push(Account.findOne({Domain__c: rtdbUser.domain}));
                         promise.push(Contact.findOne({Email: req.user.email}));
                         promise.push(Lead.findOne({Email: req.user.email}));
                         promise.push(conn.sobject('Lead').find({Email: req.user.email}));
@@ -69,7 +71,7 @@ module.exports = {
                                                 res.ok('Your Account is On Hold','Account On-Hold','FAIL')
                                                 //doSomething
                                             }else if(account.StatusAccount__c === 'Inactive'){
-
+                                                SegmentService.trackBy(req.user.uid,'Contact Added',{Type: 'Admin',Email: req.user.email});
                                             }else if(account.StatusAccount__c === 'Active'){
 
                                             }
@@ -78,6 +80,8 @@ module.exports = {
                                             FullContactService.call(req.user.email);
                                             store.Lead.isConverted = true;
                                         }
+                                        conn.sobject('Lead').update(store.Lead)
+                                            .then('')
                                         res.ok(store)
                                     })
                                 // res.ok(data);

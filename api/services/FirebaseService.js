@@ -14,40 +14,44 @@ admin.initializeApp({
 var db = admin.database();
 
 module.exports = {
-    createNewUser: (email, password)=>{
-        return new Promise((resolve,reject)=>{
-            app.auth().createUserWithEmailAndPassword(email,password)
-                .then(response=>{
+    createNewUser: (email, password) => {
+        return new Promise((resolve, reject) => {
+            app.auth().createUserWithEmailAndPassword(email, password)
+                .then(response => {
                     response.sendEmailVerification();
                     return resolve(response);
-                }).catch(error=>{
+                }).catch(error => {
                 return reject(error)
             })
         });
     },
-    createUser: token=>{
+    createUser: token => {
         console.log("Creating User");
         admin.auth().verifyIdToken(token)
-            .then(decodedToken=>{
+            .then(decodedToken => {
                 db.ref('users/' + decodedToken.uid).set({
                     name: decodedToken.name,
                     email: decodedToken.email,
                     picture: decodedToken.picture,
                 });
-            }).catch(error=>{
+            }).catch(error => {
             console.log(error)
         })
     },
-    updateUser: (uid,data)=>{
-        db.ref('users/'+uid).update(data);
+    createUserViaUid: (uid, data) => {
+        console.log("Creating User");
+        db.ref('users/' + uid).set(data);
     },
-    getUser: uid=>{
-        return db.ref('users/'+uid).once('value');
+    updateUser: (uid, data) => {
+        db.ref('users/' + uid).update(data);
     },
-    verifyIdToken: token=>{
+    getUser: uid => {
+        return db.ref('users/' + uid).once('value');
+    },
+    verifyIdToken: token => {
         return admin.auth().verifyIdToken(token);
     },
-    mintCustomToken: uid=>{
+    mintCustomToken: uid => {
         return admin.auth().createCustomToken(uid);
     }
 }
