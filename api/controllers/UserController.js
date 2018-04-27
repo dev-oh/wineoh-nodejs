@@ -25,8 +25,9 @@ module.exports = {
                         promise.push(Lead.findOne({Email: req.user.email}));
                         promise.push(conn.sobject('Lead').find({Email: req.user.email}));
                         promise.push(conn.sobject('Contact').find({Email: req.user.email}));
+                        promise.push(conn.sobject('Account').findOne({Domain__c: rtdbUser.domain}));
                         Promise.all(promise)
-                            .then(_.spread((account, contact, lead, sfdcLead,sfdcContact) => {
+                            .then(_.spread((account, contact, lead, sfdcLead,sfdcContact,sfdcAccount) => {
                                 if (account) {
                                     console.log('postgre account found');
                                     store.accountId = account.Id;
@@ -62,27 +63,36 @@ module.exports = {
                                             store.contactId = sfdcContact.id;
                                             SegmentService.trackBy(req.user.uid,'Contact Updated',{contactId: store.contactId});
                                         }
-                                        if(account){
-                                            if(account.StatusAccount__c === 'Suspended'){
+                                        if(sfdcAccount){
+                                            console.log("SFDC Account Found");
+                                            if(sfdcAccount.StatusAccount__c === 'Suspended'){
                                                 SegmentService.trackBy(req.user.uid,'Account Flagged',{Type: 'Suspended Account Login Attempt',Email: req.user.email});
                                                 res.ok('Your Account is Suspended','Suspended Account','FAIL')
-                                            }else if(account.StatusAccount__c === 'On Hold'){
+                                            }else if(sfdcAccount.StatusAccount__c === 'On Hold'){
                                                 SegmentService.trackBy(req.user.uid,'Account Flagged',{Type: 'On Hold Account Login Attempt',Email: req.user.email});
                                                 res.ok('Your Account is On Hold','Account On-Hold','FAIL')
                                                 //doSomething
-                                            }else if(account.StatusAccount__c === 'Inactive'){
+                                            }else if(sfdcAccount.StatusAccount__c === 'Inactive'){
                                                 SegmentService.trackBy(req.user.uid,'Contact Added',{Type: 'Admin',Email: req.user.email});
-                                            }else if(account.StatusAccount__c === 'Active'){
+                                            }else if(sfdcAccount.StatusAccount__c === 'Active'){
 
                                             }
                                         }else{
-                                            store.Lead.CRT__c = '01228000000TLju';
+                                            store.Lead.CRT__c = 'Administrator';
                                             FullContactService.call(req.user.email);
-                                            store.Lead.isConverted = true;
+                                            // store.Lead.convertedStatus = 'Converted';
                                         }
                                         conn.sobject('Lead').update(store.Lead)
-                                            .then('')
-                                        res.ok(store)
+                                            .then(updatedLead=>{
+                                                if(sfdcAccount){
+                                                    if(sfdcAccount)JsForceService.convertLead(store.Lead.Id,sfdcAccount.Id);
+                                                }else{
+                                                    JsForceService.convertLead(store.Lead.Id);
+                                                }
+                                                res.ok({message: 'Login Successful','SUCCESS'})
+                                            }).catch(error=>{
+                                                res.ok(error)
+                                        })
                                     })
                                 // res.ok(data);
 

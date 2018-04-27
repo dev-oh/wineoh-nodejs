@@ -310,6 +310,7 @@ module.exports = {
                         else if (lead) {
                             sails.log.info("lead found");
                             sails.log.info('checking if account exist');
+                            console.log(lead)
                             if (lead.uid__c) {
                                 sails.log.info('account already exist');
                                 return res.ok('An account with the given email is already exist','Account Exist','FAIL');
@@ -362,7 +363,7 @@ module.exports = {
                                     console.log(user);
                                     conn.sobject("Lead").update(user, function (err, ret) {
                                         if (err || !ret.success) {
-                                            console.log(err.code)
+                                            console.log(err)
                                             return res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
                                         }
                                         sails.log.info('Lead Updated');
