@@ -12,10 +12,10 @@ module.exports = {
         FirebaseService.getUser(req.user.uid)
             .then(data => {
                 var rtdbUser = data.val();
-                console.log(rtdbUser);
+                if(!rtdbUser) return res.ok({message: 'No Account Exist'},"NOT_FOUND","FAIL");
                 console.log("fetched");
                 if (rtdbUser.memberId) {
-                    res.ok(rtdbUser);
+                    res.ok({message: 'Login Successful'},'SUCCESS');
                 } else {
                     console.log('connecting to sfdc');
                     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
@@ -84,12 +84,21 @@ module.exports = {
                                         }
                                         conn.sobject('Lead').update(store.Lead)
                                             .then(updatedLead=>{
-                                                if(sfdcAccount){
-                                                    if(sfdcAccount)JsForceService.convertLead(store.Lead.Id,sfdcAccount.Id);
-                                                }else{
-                                                    JsForceService.convertLead(store.Lead.Id);
-                                                }
-                                                res.ok({message: 'Login Successful','SUCCESS'})
+                                                // if(sfdcAccount){
+                                                //     if(sfdcAccount)JsForceService.convertLead(store.Lead.Id,sfdcAccount.Id);
+                                                // }else{
+                                                //     JsForceService.convertLead(store.Lead.Id);
+                                                // }
+                                                JsForceService.convertLead(store.Lead.Id,sfdcAccount?sfdcAccount.Id:null,(error,response)=>{
+                                                    if(error) return res(error,"Converting Error","FAIL");
+                                                    console.log("Setting Member Id");
+                                                    conn.sobject('Contact').findOne({Email: req.user.email})
+                                                        .then(latestContact=>{
+                                                            console.log(latestContact);
+                                                            FirebaseService.updateUser(req.user.uid,{memberId: latestContact.MemberId__c});
+                                                        })
+                                                });
+                                                return res.ok({message: 'Login Successful'},'SUCCESS');
                                             }).catch(error=>{
                                                 res.ok(error)
                                         })
@@ -99,6 +108,9 @@ module.exports = {
                             }))
                     })
                 }
-            })
+            }).catch(error=>{
+                console.log(error);
+                res.ok("No Account Exist","NOT_FOUND","FAIL")
+        })
     }
 };

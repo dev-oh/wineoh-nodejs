@@ -580,6 +580,7 @@ module.exports = {
                                                         SegmentService.identifyTrait(user.uid__c, user);
                                                         SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
                                                         FullContactService.call(user.Email);
+                                                        FirebaseService.createUserViaUid(user.uid__c,{name: user.LastName,email: user.email,domain: user.Website});
                                                         res.ok('Account Created', 'CREATED');
                                                     });
                                             })
@@ -593,6 +594,7 @@ module.exports = {
                                     SegmentService.identifyTrait(user.uid__c,user);
                                     SegmentService.track(user.uid__c,'Lead Added',user.Email);
                                     FullContactService.call(user.Email);
+                                    FirebaseService.createUserViaUid(user.uid__c,{name: user.LastName,email: user.email,domain: user.Website});
                                     Lead.create(user).catch(error=>{
                                         console.log(error);
                                     });
