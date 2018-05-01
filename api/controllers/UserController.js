@@ -82,13 +82,9 @@ module.exports = {
                                             FullContactService.call(req.user.email);
                                             // store.Lead.convertedStatus = 'Converted';
                                         }
+                                        store.Lead.uid__c = req.user.uid;
                                         conn.sobject('Lead').update(store.Lead)
                                             .then(updatedLead=>{
-                                                // if(sfdcAccount){
-                                                //     if(sfdcAccount)JsForceService.convertLead(store.Lead.Id,sfdcAccount.Id);
-                                                // }else{
-                                                //     JsForceService.convertLead(store.Lead.Id);
-                                                // }
                                                 JsForceService.convertLead(store.Lead.Id,sfdcAccount?sfdcAccount.Id:null,(error,response)=>{
                                                     if(error) return res(error,"Converting Error","FAIL");
                                                     console.log("Setting Member Id");

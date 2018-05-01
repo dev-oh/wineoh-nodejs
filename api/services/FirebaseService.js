@@ -14,29 +14,11 @@ admin.initializeApp({
 var db = admin.database();
 
 module.exports = {
-    createNewUser: (email, password) => {
-        return new Promise((resolve, reject) => {
-            app.auth().createUserWithEmailAndPassword(email, password)
-                .then(response => {
-                    response.sendEmailVerification();
-                    return resolve(response);
-                }).catch(error => {
-                return reject(error)
-            })
-        });
-    },
-    createUser: token => {
-        console.log("Creating User");
-        admin.auth().verifyIdToken(token)
-            .then(decodedToken => {
-                db.ref('users/' + decodedToken.uid).set({
-                    name: decodedToken.name,
-                    email: decodedToken.email,
-                    picture: decodedToken.picture,
-                });
-            }).catch(error => {
-            console.log(error)
-        })
+    createUserViaEmail: (email,name)=>{
+      return admin.auth().createUser({
+          email: email,
+          displayName: name
+      });
     },
     createUserViaUid: (uid, data) => {
         console.log("Creating User");
