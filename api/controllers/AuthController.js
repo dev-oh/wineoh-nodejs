@@ -45,14 +45,32 @@ module.exports = {
 
                                 sails.log.info('contact found');
                                 if (contact.StatusPerson__c === 'UNPROVISIONED') {
-
                                     sails.log.info('creating sfdc connection');
                                     sails.log.info('sfdc connection established');
-                                    conn.query("SELECT Id FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {
+                                    conn.query("SELECT Id FROM Contact WHERE Email = '" + user.Email + "'", function (err, result) {
                                         if (err) {
                                             console.error(err);
                                             return res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
                                         }
+
+                                        conn.sobject('Contact').findOne({Email: user.Email})
+                                            .then(sfdcContact => {
+                                                user.Id = sfdcContact.Id;
+                                                conn.sobject('Contact').update(user)
+                                                    .then(updatedContact => {
+                                                        Contact.update(user);
+                                                        FirebaseService.createUserViaUid(user.uid__c, {
+                                                            name: (user.LastName ? user.LastName + ' ' : '') + user.LastName,
+                                                            email: user.Email,
+                                                            domain: user.Website
+                                                        });
+                                                        res.ok({message: 'Created'}, 'CREATED');
+                                                    });
+                                            }).catch(error => {
+                                            console.log(error);
+                                            return res.ok('Unable to create account', 'Error', 'FAIL')
+                                        });
+
                                         sails.log.info('Updating Fetched Lead');
                                         result = result.records[0];
                                         user.Id = result.Id;
@@ -105,59 +123,75 @@ module.exports = {
                                 sails.log.info('account not exist');
 
                                 conn.sobject('Lead').find({Email: user.Email})
-                                    .then(sfdcLeads=>{
-                                        SfdcService.mergeSfdcLeads(sfdcLeads,(masterLead,duplicates)=>{
-                                           masterLead = FilterService.cleanLead(masterLead);
-                                           conn.sobject('Lead').update(masterLead)
-                                               .then(updatedLead=>{
-                                                   user.Id = updatedLead.id;
-                                                   conn.sobject('Lead').update(user);
-                                                   SegmentService.identifyTrait(user.Id, user);
-                                                   SegmentService.trackBy(user.Id, "Lead Staged", {Email: user.Email, Id: user.Id});
-                                                   Lead.update({Email: user.Email}, user);
-                                                   FirebaseService.createUserViaUid(user.uid__c, {
-                                                       name: response.name,
-                                                       email: response.email,
-                                                       domain: user.Website
-                                                   });
-                                                   return res.ok({message: 'Created'},'CREATED');
-                                               })
+                                    .then(sfdcLeads => {
+                                        SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, duplicates) => {
+                                            masterLead = FilterService.cleanLead(masterLead);
+                                            conn.sobject('Lead').update(masterLead)
+                                                .then(updatedLead => {
+                                                    if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                    user.Id = updatedLead.id;
+                                                    conn.sobject('Lead').update(user);
+                                                    SegmentService.identifyTrait(user.Id, user);
+                                                    SegmentService.trackBy(user.Id, "Lead Staged", {
+                                                        Email: user.Email,
+                                                        Id: user.Id
+                                                    });
+                                                    Lead.update({Email: user.Email}, user);
+                                                    FirebaseService.createUserViaUid(user.uid__c, {
+                                                        name: response.name,
+                                                        email: response.email,
+                                                        domain: user.Website
+                                                    });
+                                                    return res.ok({message: 'Created'}, 'CREATED');
+                                                })
                                         });
-                                    }).then(error=>{
-                                        console.log(error);
+                                    }).catch(error => {
+                                    console.log(error);
                                     res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
                                 });
                             }
                             else {
                                 sails.log.info("no contact or lead");
-                                sails.log.info('signing in to sfdc');
-                                if (error) return sails.log.error(error);
                                 sails.log.info('Fetching Lead From SFDC');
                                 conn.query("SELECT Id FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {
                                     if (err) {
-                                        console.error(err);
                                         return res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
                                     }
-                                    sails.log.info('Updating Fetched Lead');
-                                    result = result.records[0];
-                                    user.Id = result.Id;
-                                    console.log(user);
-                                    conn.sobject("Lead").update(user, function (err, ret) {
-                                        if (err || !ret.success) {
-                                            console.log(err)
-                                            return res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
-                                        }
-                                        sails.log.info('Lead Updated');
-                                        SegmentService.identifyTrait(ret.id, user);
-                                        SegmentService.trackBy(ret.id, "Lead Staged", {Email: user.Email, Id: ret.id});
-                                        FirebaseService.createUserViaUid(user.uid__c, {
-                                            name: response.name,
-                                            email: response.email,
-                                            domain: user.Website
-                                        });
-                                        Lead.create(user).then(createdLead => {
-                                        });
-                                        return res.ok(ret);
+                                    console.log('finding lead in sfdc');
+                                    conn.sobject('Lead').find({Email: user.Email})
+                                        .then(sfdcLeads => {
+                                            console.log('fetched');
+                                            SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, duplicates) => {
+                                                masterLead = FilterService.cleanLead(masterLead);
+                                                console.log('updating lead after merging');
+                                                conn.sobject('Lead').update(masterLead)
+                                                    .then(updatedLead => {
+                                                        console.log('updated');
+                                                        console.log('deleting duplicates');
+                                                        if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                        user.Id = updatedLead.id;
+                                                        console.log('updating lead with latest data');
+                                                        conn.sobject('Lead').update(user);
+                                                        SegmentService.identifyTrait(user.Id, user);
+                                                        SegmentService.trackBy(user.Id, "Lead Staged", {
+                                                            Email: user.Email,
+                                                            Id: user.Id
+                                                        });
+                                                        console.log('creating entry in postgre');
+                                                        Lead.update({Email: user.Email}, user).then(loclead=>{}).catch(error=>{console.log(error)});
+                                                        console.log('entry in firebase database');
+                                                        FirebaseService.createUserViaUid(user.uid__c, {
+                                                            name: response.name,
+                                                            email: response.email,
+                                                            domain: user.Website
+                                                        });
+                                                        console.log('returning Ok Response');
+                                                        return res.ok({message: 'Created'}, 'CREATED');
+                                                    })
+                                            });
+                                        }).catch(error => {
+                                        console.log(error);
+                                        res.ok("An error occur while creating Account", 'Internal Server Error', 'FAIL');
                                     });
 
                                 });
@@ -219,7 +253,7 @@ module.exports = {
                                 }).catch(error => {
                                 console.log(error);
                                 return res.ok('Unable to create account', 'Error', 'FAIL')
-                            })
+                            });
                         } else if (
                             contact.StatusPerson__c === 'STAGED' ||
                             contact.StatusPerson__c === 'RECOVERY' ||
