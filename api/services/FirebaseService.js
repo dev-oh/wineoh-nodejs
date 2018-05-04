@@ -20,6 +20,9 @@ module.exports = {
           displayName: name
       });
     },
+    getUser: (email)=>{
+        return admin.auth().getUserByEmail(email);
+    },
     createUserViaUid: (uid, data) => {
         console.log("Creating User");
         db.ref('users/' + uid).set(data);
@@ -27,7 +30,7 @@ module.exports = {
     updateUser: (uid, data) => {
         db.ref('users/' + uid).update(data);
     },
-    getUser: uid => {
+    getUserFromDb: uid => {
         return db.ref('users/' + uid).once('value');
     },
     verifyIdToken: token => {
@@ -35,5 +38,8 @@ module.exports = {
     },
     mintCustomToken: uid => {
         return admin.auth().createCustomToken(uid);
+    },
+    deleteUser: uid=>{
+        return admin.auth().deleteUser(uid);
     }
 }

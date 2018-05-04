@@ -5,7 +5,7 @@ module.exports = {
             .then(token=>{
                 res.ok({
                     firebaseToken: token,
-                    zendeskUrl: ZendeskService.getUrl(req.user.email,req.user.name)
+                    zendeskUrl: ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture)
                 })
             });
     }

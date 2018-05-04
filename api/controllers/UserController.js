@@ -9,11 +9,11 @@ module.exports = {
         var store = {};
         var flag = {};
         console.log("fetching user from firebase");
-        FirebaseService.getUser(req.user.uid)
+        FirebaseService.getUserFromDb(req.user.uid)
             .then(data => {
+                console.log("fetched");
                 var rtdbUser = data.val();
                 if(!rtdbUser) return res.ok({message: 'No Account Exist'},"NOT_FOUND","FAIL");
-                console.log("fetched");
                 if (rtdbUser.memberId) {
                     res.ok({message: 'Login Successful'},'SUCCESS');
                 } else {

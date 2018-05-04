@@ -33,6 +33,7 @@ module.exports = {
         delete lead.LastModifiedById;
         delete lead.OuterName__c;
         delete lead.TargetLinkedin__c;
+        delete lead.AccountId__c;
         return lead;
     }
 }

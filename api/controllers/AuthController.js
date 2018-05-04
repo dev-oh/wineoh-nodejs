@@ -187,7 +187,9 @@ module.exports = {
                                                         });
                                                         console.log('returning Ok Response');
                                                         return res.ok({message: 'Created'}, 'CREATED');
-                                                    })
+                                                    }).catch(error=>{
+                                                        console.log(error);
+                                                })
                                             });
                                         }).catch(error => {
                                         console.log(error);
@@ -244,11 +246,24 @@ module.exports = {
                                                         email: user.Email,
                                                         domain: user.Website
                                                     });
-                                                    res.ok({message: 'Created'}, 'CREATED');
+                                                    return res.ok({message: 'Created'}, 'CREATED');
                                                 });
                                         }).catch(error => {
-                                        if (error.errorInfo.code === 'auth/email-already-exists') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                                        return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                                        if (error.errorInfo.code === 'auth/email-already-exists'){
+                                            conn.sobject('Contact').update(user)
+                                                .then(updatedContact => {
+                                                    Contact.update(user);
+                                                    FirebaseService.createUserViaUid(user.uid__c, {
+                                                        name: (user.LastName ? user.LastName + ' ' : '') + user.LastName,
+                                                        email: user.Email,
+                                                        domain: user.Website
+                                                    });
+                                                    return res.ok({message: 'Created'}, 'CREATED');
+                                                });
+                                            // return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
+                                        }else{
+                                            return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                                        }
                                     })
                                 }).catch(error => {
                                 console.log(error);
@@ -314,13 +329,55 @@ module.exports = {
                                                 })
                                         });
                                     }).catch(error => {
+                                        FirebaseService.deleteUser(fbuser.uid);
                                     console.error(error);
                                     return res.ok(error, 'ERROR', 'FAIL')
                                 })
                             }).catch(error => {
                             console.error(error)
-                            if (error.errorInfo.code === 'auth/email-already-exists') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                            return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                            if (error.errorInfo.code === 'auth/email-already-exists'){
+                                FirebaseService.getUser(user.Email)
+                                    .then(fbuser=>{
+                                        console.log("Account created");
+                                        user.uid__c = fbuser.uid;
+                                        console.log(`uid is ${fbuser.uid}`);
+                                        console.log('finding sfdc lead using ' + user.Email)
+                                        conn.sobject('Lead').find({Email: user.Email})
+                                            .then(sfdcLeads => {
+                                                console.log('leads found');
+                                                console.log('executind merging strategy');
+                                                SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, duplicates) => {
+                                                    console.log("merging done");
+                                                    masterLead = FilterService.cleanLead(masterLead);
+                                                    console.log('updating master lead');
+                                                    conn.sobject('Lead').update(masterLead)
+                                                        .then(updatedLead => {
+                                                            console.log('master lead updated');
+                                                            console.log('[async] deleting duplicates');
+                                                            if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                            user.Id = updatedLead.id;
+                                                            console.log('[Async] updating master lead with current data');
+                                                            conn.sobject('Lead').update(user);
+                                                            console.log('creating postgre entry');
+                                                            Lead.create(user).then(createdLead => {
+                                                            });
+                                                            console.log('creating entry in firebase database');
+                                                            FirebaseService.createUserViaUid(user.uid__c, {
+                                                                name: (user.LastName ? user.LastName + ' ' : '') + user.LastName,
+                                                                email: user.Email,
+                                                                domain: user.Website
+                                                            });
+                                                            res.ok({message: 'Created'}, 'CREATED')
+                                                        })
+                                                });
+                                            }).catch(error => {
+                                            console.error(error);
+                                            return res.ok(error, 'ERROR', 'FAIL')
+                                        })
+                                    });
+                            }else{
+                                return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                            }
                         });
                     }
                     else {
@@ -360,16 +417,66 @@ module.exports = {
                                                         domain: user.Website
                                                     });
                                                     res.ok({message: 'Created'}, 'CREATED')
-                                                })
+                                                }).catch(error=>{
+                                                FirebaseService.deleteUser(fbuser.uid);
+                                                    console.log(error)
+                                            })
                                         });
                                     }).catch(error => {
+                                        FirebaseService.deleteUser(fbuser.uid);
                                     console.error(error);
                                     return res.ok(error, 'ERROR', 'FAIL')
                                 })
                             }).catch(error => {
                             console.error(error)
-                            if (error.errorInfo.code === 'auth/email-already-exists') return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                            return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                            if (error.errorInfo.code === 'auth/email-already-exists'){
+                                FirebaseService.getUser(user.Email)
+                                    .then(fbuser=>{
+                                        console.log("Account Fetched");
+                                        user.uid__c = fbuser.uid;
+                                        console.log(`uid is ${fbuser.uid}`);
+                                        console.log('finding sfdc lead using ' + user.Email)
+                                        conn.sobject('Lead').find({Email: user.Email})
+                                            .then(sfdcLeads => {
+                                                console.log('leads found');
+                                                console.log('executind merging strategy');
+                                                SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, duplicates) => {
+                                                    console.log("merging done");
+                                                    masterLead = FilterService.cleanLead(masterLead);
+                                                    console.log('updating master lead');
+                                                    conn.sobject('Lead').update(masterLead)
+                                                        .then(updatedLead => {
+                                                            console.log('master lead updated');
+                                                            console.log('[async] deleting duplicates');
+                                                            if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                            user.Id = updatedLead.id;
+                                                            console.log('[Async] updating master lead with current data');
+                                                            conn.sobject('Lead').update(user);
+                                                            console.log('creating postgre entry');
+                                                            Lead.create(user).then(createdLead => {
+                                                            });
+                                                            console.log('creating entry in firebase database');
+                                                            FirebaseService.createUserViaUid(user.uid__c, {
+                                                                name: (user.LastName ? user.LastName + ' ' : '') + user.LastName,
+                                                                email: user.Email,
+                                                                domain: user.Website
+                                                            });
+                                                            res.ok({message: 'Created'}, 'CREATED')
+                                                        }).catch(error=>{
+                                                        FirebaseService.deleteUser(fbuser.uid);
+                                                        console.log(error)
+                                                    })
+                                                });
+                                            }).catch(error => {
+                                            console.error(error);
+                                            return res.ok(error, 'ERROR', 'FAIL')
+                                        })
+                                    }).catch(error=>{
+                                    return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                                });
+                            }else{
+                                return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
+                            }
                         });
                     }
                 }))
