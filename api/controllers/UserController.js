@@ -67,21 +67,27 @@ module.exports = {
                                             console.log("SFDC Account Found");
                                             if(sfdcAccount.StatusAccount__c === 'Suspended'){
                                                 SegmentService.trackBy(req.user.uid,'Account Flagged',{Type: 'Suspended Account Login Attempt',Email: req.user.email});
+                                                GetStreamService.addNotification(req.user.uid,{actor: req.user.email,verb: 'attempted login',object: 'suspended account'});
                                                 res.ok('Your Account is Suspended','Suspended Account','FAIL')
                                             }else if(sfdcAccount.StatusAccount__c === 'On Hold'){
                                                 SegmentService.trackBy(req.user.uid,'Account Flagged',{Type: 'On Hold Account Login Attempt',Email: req.user.email});
+                                                GetStreamService.addNotification(req.user.uid,{actor: req.user.email,verb: 'attempted login',object: 'on-hold account'});
                                                 res.ok('Your Account is On Hold','Account On-Hold','FAIL')
                                                 //doSomething
                                             }else if(sfdcAccount.StatusAccount__c === 'Inactive'){
                                                 SegmentService.trackBy(req.user.uid,'Contact Added',{Type: 'Admin',Email: req.user.email});
+                                                store.Lead.CRT__c = 'Administrator';
+                                                store.accountActivateFlag = true;
                                             }else if(sfdcAccount.StatusAccount__c === 'Active'){
 
                                             }
                                         }else{
                                             store.Lead.CRT__c = 'Administrator';
-                                            FullContactService.call(req.user.email);
+                                            store.accountActivateFlag = true;
+                                            // FullContactService.call(req.user.email);
                                             // store.Lead.convertedStatus = 'Converted';
                                         }
+                                        FullContactService.call(req.user.email);
                                         store.Lead.uid__c = req.user.uid;
                                         conn.sobject('Lead').update(store.Lead)
                                             .then(updatedLead=>{
@@ -91,6 +97,10 @@ module.exports = {
                                                     conn.sobject('Contact').findOne({Email: req.user.email})
                                                         .then(latestContact=>{
                                                             console.log(latestContact);
+                                                            if(store.accountActivateFlag){
+                                                                SegmentService.trackBy(req.user.uid,'Account Activated');
+                                                                GetStreamService.addNotification(req.user.uid,{actor: 'Wine-Oh!',verb: 'welcomes',object: latestContact.PartnerId__c});
+                                                            }
                                                             FirebaseService.updateUser(req.user.uid,{memberId: latestContact.MemberId__c});
                                                         })
                                                 });
@@ -109,4 +119,5 @@ module.exports = {
                 res.ok("No Account Exist","NOT_FOUND","FAIL")
         })
     }
+
 };

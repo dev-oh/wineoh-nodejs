@@ -77,5 +77,11 @@ module.exports = {
                 });
             });
         });
+    },
+    testGetStream: (req,res)=>{
+        console.log(req.body);
+        GetStreamService.addActivity('rahil1992',req.body);
+        res.ok();
     }
+
 }

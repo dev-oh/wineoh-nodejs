@@ -42,7 +42,6 @@ module.exports = {
                     Promise.all(promise)
                         .then(_.spread((contact, lead) => {
                             if (contact) {
-
                                 sails.log.info('contact found');
                                 if (contact.StatusPerson__c === 'UNPROVISIONED') {
                                     sails.log.info('creating sfdc connection');
