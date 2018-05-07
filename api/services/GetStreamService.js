@@ -1,5 +1,6 @@
 var stream = require('getstream');
-var client = stream.connect('7aqzuqp68fjs', '5haxgn84yud2frugn2c569h9t9xd3x82q9s9wuarfw8qv4gqkkyxf82s43s5a5wx', '36596');
+var CREDS = require('./../../config/secrets/creds');
+var client = stream.connect(CREDS.getstreamCreds.key, CREDS.getstreamCreds.secret, CREDS.getstreamCreds.appId);
 module.exports = {
     addActivity: (user,activity)=>{
         user = client.feed('user',user);
