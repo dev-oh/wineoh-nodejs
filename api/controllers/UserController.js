@@ -118,6 +118,28 @@ module.exports = {
                 console.log(error);
                 res.ok("No Account Exist","NOT_FOUND","FAIL")
         })
+    },
+    profile: (req,res)=>{
+        Contact.findOne({uid__c: req.user.uid})
+            .then(user=>{
+                res.ok(user)
+            }).catch(error=>{
+                res.ok(error,'SERVER_ERROR','FAIL');
+        })
+    },
+    getTeam: (req,res)=>{
+        Contact.findOne({uid__c: req.user.uid})
+            .then(user=>{
+                Contact.find({AccountId: user.AccountId})
+                    .then(users=>{
+                        var response = _.groupBy(users,e=>{return e.StatusPerson__c});
+                        res.ok(response)
+                    }).catch(error=>{
+                        res.ok(error,'SERVER_ERROR','FAIL');
+                })
+            }).catch(error=>{
+                res.ok(error,'SERVER_ERROR','FAIL')
+        })
     }
 
 };

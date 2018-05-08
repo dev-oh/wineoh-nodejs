@@ -82,6 +82,53 @@ module.exports = {
         console.log(req.body);
         GetStreamService.addActivity('rahil1992',req.body);
         res.ok();
+    },
+    trick1: (req,res)=>{
+        var conn = new jsforce.Connection();
+        console.log('tricking');
+        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+           if(error) return res.badRequest(error);
+           console.log('connected');
+           conn.sobject('Contact').findOne({Email: 'dt.harpreetsingh@gmail.com'})
+               .then(contact=>{
+                   delete contact.CreatedDate;
+                   delete contact.LastModifiedDate;
+                   delete contact.Id;
+                   Contact.create(contact)
+                       .then(contact=>{
+                           res.ok(contact)
+                       }).catch(error=>{
+                           console.log(error)
+                           res.badRequest(error)
+                   })
+               })
+        });
+    },
+    trick2: (req,res)=>{
+        var conn = new jsforce.Connection();
+        console.log('tricking');
+        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+            if(error) return res.badRequest(error);
+            console.log('connected');
+            conn.sobject('Account').findOne({Domain__c: 'develop-tech.com'})
+                .then(account=>{
+                    console.log(account)
+                    account.Primary__pc = false;
+                    delete account.CreatedDate;
+                    delete account.LastModifiedDate;
+                    delete account.Id;
+                    console.log('creating');
+                    Account.create(account)
+                        .then(account=>{
+                            res.ok(account)
+                        }).catch(error=>{
+                        console.log(error)
+                        res.badRequest(error)
+                    })
+                }).catch(error=>{
+                    console.log(error);
+                    return res.badRequest(error);
+            })
+        });
     }
-
 }
