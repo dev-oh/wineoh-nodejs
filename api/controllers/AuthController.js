@@ -567,7 +567,11 @@ module.exports = {
                             res.ok('Please Contact Support', 'CONTACT_SUPPORT');
                         }
                     } else if (postgreLeads.length) {
+                        console.log("lead found");
+                        if(postgreLeads[0].uid__c) return res.ok('Account with the given email is already exist','ALREADY_EXIST','FAIL');
+                        console.log("connection to sfdc");
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                            console.log('connected');
                             conn.sobject('Lead').find({Email: user.Email})
                                 .then(sfdcLeads => {
                                     SfdcService.mergeSfdcLeads(sfdcLeads, (masterLead, dupIds) => {
@@ -586,9 +590,9 @@ module.exports = {
                                                         SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
                                                         FullContactService.call(user.Email);
                                                         FirebaseService.createUserViaUid(user.uid__c, {
-                                                            name: user.LastName,
-                                                            email: user.email,
-                                                            domain: user.Website
+                                                            // name: user.LastName,
+                                                            email: user.Email,
+                                                            // domain: user.Website
                                                         });
                                                         res.ok('Account Created', 'CREATED');
                                                     });
@@ -597,22 +601,33 @@ module.exports = {
                                 });
                         })
                     } else {
+                        console.log("Nothing found");
+                        console.log("connecting to sfdc");
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                            console.log("connected");
+                            console.log("creating lead");
+                            console.log(user);
                             conn.sobject('Lead').create(user)
                                 .then(sfdcLead => {
+                                    console.log('created');
                                     SegmentService.identifyTrait(user.uid__c, user);
                                     SegmentService.track(user.uid__c, 'Lead Added', user.Email);
                                     FullContactService.call(user.Email);
                                     FirebaseService.createUserViaUid(user.uid__c, {
-                                        name: user.LastName,
-                                        email: user.email,
-                                        domain: user.Website
+                                        // name: user.LastName,
+                                        email: user.Email,
+                                        // domain: user.Website
                                     });
-                                    Lead.create(user).catch(error => {
+                                    console.log("creating lead in postgre");
+                                    Lead.create(user).then(user=>{
+                                      console.log("created on postgre")
+                                    }).catch(error => {
                                         console.log(error);
+                                        return res.ok(error,'SERVER_ERROR','FAIL');
                                     });
-                                    res.ok('Account Created', 'CREATED');
+                                    return res.ok('Account Created', 'CREATED');
                                 }).catch(error => {
+                                    console.log('unable to create lead');
                                 console.error(error);
                                 res.ok(error, "SFDC Error", "FAIL");
                             })
