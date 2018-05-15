@@ -527,7 +527,7 @@ module.exports = {
                     uid__c: firebaseUser.uid,
                     StatusPerson__c: 'STAGED'
                 };
-                if (firebaseUser.email !== user.Email) return res.ok('Please Authenticate With Same Email', "EMAIL_MISMATCH", "FAIL");
+                if (firebaseUser.email !== user.Email) return res.ok({message:'Please Authenticate With Same Email'}, "EMAIL_MISMATCH", "FAIL");
                 Promise.all([
                     Contact.findOne({Email: user.Email}),
                     Lead.find({Email: user.Email})
@@ -544,7 +544,7 @@ module.exports = {
                                         SegmentService.identifyTrait(user.uid__c, user);
                                         SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
                                         FullContactService.call(user.Email);
-                                        res.ok('Account Created', 'CREATED');
+                                        res.ok({message:'Account Created'}, 'CREATED');
                                     })
                             });
                         } else if (
@@ -554,21 +554,21 @@ module.exports = {
                             postgreContact.StatusPerson__c === 'ACTIVE'
                         ) {
                             // logic here
-                            res.ok('User can sign in', 'SIGN_IN');
+                            res.ok({message: 'User can sign in'}, 'SIGN_IN','FAIL');
                         } else if (
                             postgreContact.StatusPerson__c === 'PROVISIONED' ||
                             postgreContact.StatusPerson__c === 'PW_EXPIRED'
                         ) {
-                            res.ok('Reset Password', 'RESET_PASSWORD');
+                            res.ok({message: 'Reset Password'}, 'RESET_PASSWORD','FAIL);
                         } else if (
                             postgreContact.StatusPerson__c === 'SUSPENDED' ||
                             postgreContact.StatusPerson__c === 'DEPROVISIONED'
                         ) {
-                            res.ok('Please Contact Support', 'CONTACT_SUPPORT');
+                            res.ok({message: 'Please Contact Support'}, 'CONTACT_SUPPORT','FAIL');
                         }
                     } else if (postgreLeads.length) {
                         console.log("lead found");
-                        if(postgreLeads[0].uid__c) return res.ok('Account with the given email is already exist','ALREADY_EXIST','FAIL');
+                        if(postgreLeads[0].uid__c) return res.ok({message: 'Account with the given email is already exist'},'ALREADY_EXIST','FAIL');
                         console.log("connection to sfdc");
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                             console.log('connected');
@@ -594,7 +594,7 @@ module.exports = {
                                                             email: user.Email,
                                                             // domain: user.Website
                                                         });
-                                                        res.ok('Account Created', 'CREATED');
+                                                        res.ok({message:'Account Created'}, 'CREATED');
                                                     });
                                             })
                                     })
@@ -625,7 +625,7 @@ module.exports = {
                                         console.log(error);
                                         return res.ok(error,'SERVER_ERROR','FAIL');
                                     });
-                                    return res.ok('Account Created', 'CREATED');
+                                    return res.ok({message:'Account Created'}, 'CREATED');
                                 }).catch(error => {
                                     console.log('unable to create lead');
                                 console.error(error);
