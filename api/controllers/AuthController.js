@@ -559,7 +559,7 @@ module.exports = {
                             postgreContact.StatusPerson__c === 'PROVISIONED' ||
                             postgreContact.StatusPerson__c === 'PW_EXPIRED'
                         ) {
-                            res.ok({message: 'Reset Password'}, 'RESET_PASSWORD','FAIL);
+                            res.ok({message: 'Reset Password'}, 'RESET_PASSWORD','FAIL');
                         } else if (
                             postgreContact.StatusPerson__c === 'SUSPENDED' ||
                             postgreContact.StatusPerson__c === 'DEPROVISIONED'
