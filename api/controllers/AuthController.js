@@ -91,24 +91,8 @@ module.exports = {
                                         });
 
                                     });
-                                } else if (
-                                    contact.StatusPerson__c === 'STAGED' ||
-                                    contact.StatusPerson__c === 'RECOVERY' ||
-                                    contact.StatusPerson__c === 'LOCKED_OUT' ||
-                                    contact.StatusPerson__c === 'ACTIVE'
-                                ) {
-                                    // logic here
-                                    res.ok('goSignIn');
-                                } else if (
-                                    contact.StatusPerson__c === 'PROVISIONED' ||
-                                    contact.StatusPerson__c === 'PW_EXPIRED'
-                                ) {
-                                    res.ok('sendPassword')
-                                } else if (
-                                    contact.StatusPerson__c === 'SUSPENDED' ||
-                                    contact.StatusPerson__c === 'DEPROVISIONED'
-                                ) {
-                                    res.ok('contactSupport');
+                                } else {
+                                    return res.ok({message: ''}, contact.StatusPerson__c, 'FAIL');
                                 }
                             }
                             else if (lead) {
@@ -177,7 +161,10 @@ module.exports = {
                                                             Id: user.Id
                                                         });
                                                         console.log('creating entry in postgre');
-                                                        Lead.update({Email: user.Email}, user).then(loclead=>{}).catch(error=>{console.log(error)});
+                                                        Lead.update({Email: user.Email}, user).then(loclead => {
+                                                        }).catch(error => {
+                                                            console.log(error)
+                                                        });
                                                         console.log('entry in firebase database');
                                                         FirebaseService.createUserViaUid(user.uid__c, {
                                                             name: response.name,
@@ -186,8 +173,8 @@ module.exports = {
                                                         });
                                                         console.log('returning Ok Response');
                                                         return res.ok({message: 'Created'}, 'CREATED');
-                                                    }).catch(error=>{
-                                                        console.log(error);
+                                                    }).catch(error => {
+                                                    console.log(error);
                                                 })
                                             });
                                         }).catch(error => {
@@ -248,7 +235,7 @@ module.exports = {
                                                     return res.ok({message: 'Created'}, 'CREATED');
                                                 });
                                         }).catch(error => {
-                                        if (error.errorInfo.code === 'auth/email-already-exists'){
+                                        if (error.errorInfo.code === 'auth/email-already-exists') {
                                             conn.sobject('Contact').update(user)
                                                 .then(updatedContact => {
                                                     Contact.update(user);
@@ -260,7 +247,7 @@ module.exports = {
                                                     return res.ok({message: 'Created'}, 'CREATED');
                                                 });
                                             // return res.ok("An account with given email is already exist", 'Account Exist', 'FAIL');
-                                        }else{
+                                        } else {
                                             return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
                                         }
                                     })
@@ -328,15 +315,15 @@ module.exports = {
                                                 })
                                         });
                                     }).catch(error => {
-                                        FirebaseService.deleteUser(fbuser.uid);
+                                    FirebaseService.deleteUser(fbuser.uid);
                                     console.error(error);
                                     return res.ok(error, 'ERROR', 'FAIL')
                                 })
                             }).catch(error => {
                             console.error(error)
-                            if (error.errorInfo.code === 'auth/email-already-exists'){
+                            if (error.errorInfo.code === 'auth/email-already-exists') {
                                 FirebaseService.getUser(user.Email)
-                                    .then(fbuser=>{
+                                    .then(fbuser => {
                                         console.log("Account created");
                                         user.uid__c = fbuser.uid;
                                         console.log(`uid is ${fbuser.uid}`);
@@ -374,7 +361,7 @@ module.exports = {
                                             return res.ok(error, 'ERROR', 'FAIL')
                                         })
                                     });
-                            }else{
+                            } else {
                                 return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
                             }
                         });
@@ -416,21 +403,21 @@ module.exports = {
                                                         domain: user.Website
                                                     });
                                                     res.ok({message: 'Created'}, 'CREATED')
-                                                }).catch(error=>{
+                                                }).catch(error => {
                                                 FirebaseService.deleteUser(fbuser.uid);
-                                                    console.log(error)
+                                                console.log(error)
                                             })
                                         });
                                     }).catch(error => {
-                                        FirebaseService.deleteUser(fbuser.uid);
+                                    FirebaseService.deleteUser(fbuser.uid);
                                     console.error(error);
                                     return res.ok(error, 'ERROR', 'FAIL')
                                 })
                             }).catch(error => {
                             console.error(error)
-                            if (error.errorInfo.code === 'auth/email-already-exists'){
+                            if (error.errorInfo.code === 'auth/email-already-exists') {
                                 FirebaseService.getUser(user.Email)
-                                    .then(fbuser=>{
+                                    .then(fbuser => {
                                         console.log("Account Fetched");
                                         user.uid__c = fbuser.uid;
                                         console.log(`uid is ${fbuser.uid}`);
@@ -461,7 +448,7 @@ module.exports = {
                                                                 domain: user.Website
                                                             });
                                                             res.ok({message: 'Created'}, 'CREATED')
-                                                        }).catch(error=>{
+                                                        }).catch(error => {
                                                         FirebaseService.deleteUser(fbuser.uid);
                                                         console.log(error)
                                                     })
@@ -470,10 +457,10 @@ module.exports = {
                                             console.error(error);
                                             return res.ok(error, 'ERROR', 'FAIL')
                                         })
-                                    }).catch(error=>{
+                                    }).catch(error => {
                                     return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
                                 });
-                            }else{
+                            } else {
                                 return res.ok('Unable to create you account', 'UNKNOWN ERROR', 'FAIL');
                             }
                         });
@@ -527,7 +514,7 @@ module.exports = {
                     uid__c: firebaseUser.uid,
                     StatusPerson__c: 'STAGED'
                 };
-                if (firebaseUser.email !== user.Email) return res.ok({message:'Please Authenticate With Same Email'}, "EMAIL_MISMATCH", "FAIL");
+                if (firebaseUser.email !== user.Email) return res.ok({message: 'Please Authenticate With Same Email'}, "EMAIL_MISMATCH", "FAIL");
                 Promise.all([
                     Contact.findOne({Email: user.Email}),
                     Lead.find({Email: user.Email})
@@ -544,7 +531,7 @@ module.exports = {
                                         SegmentService.identifyTrait(user.uid__c, user);
                                         SegmentService.track(user.uid__c, 'Lead Updated', user.Email);
                                         FullContactService.call(user.Email);
-                                        res.ok({message:'Account Created'}, 'CREATED');
+                                        res.ok({message: 'Account Created'}, 'CREATED');
                                     })
                             });
                         } else if (
@@ -554,21 +541,21 @@ module.exports = {
                             postgreContact.StatusPerson__c === 'ACTIVE'
                         ) {
                             // logic here
-                            res.ok({message: 'User can sign in'}, 'SIGN_IN','FAIL');
+                            res.ok({message: 'User can sign in'}, 'SIGN_IN', 'FAIL');
                         } else if (
                             postgreContact.StatusPerson__c === 'PROVISIONED' ||
                             postgreContact.StatusPerson__c === 'PW_EXPIRED'
                         ) {
-                            res.ok({message: 'Reset Password'}, 'RESET_PASSWORD','FAIL');
+                            res.ok({message: 'Reset Password'}, 'RESET_PASSWORD', 'FAIL');
                         } else if (
                             postgreContact.StatusPerson__c === 'SUSPENDED' ||
                             postgreContact.StatusPerson__c === 'DEPROVISIONED'
                         ) {
-                            res.ok({message: 'Please Contact Support'}, 'CONTACT_SUPPORT','FAIL');
+                            res.ok({message: 'Please Contact Support'}, 'CONTACT_SUPPORT', 'FAIL');
                         }
                     } else if (postgreLeads.length) {
                         console.log("lead found");
-                        if(postgreLeads[0].uid__c) return res.ok({message: 'Account with the given email is already exist'},'ALREADY_EXIST','FAIL');
+                        if (postgreLeads[0].uid__c) return res.ok({message: 'Account with the given email is already exist'}, 'ALREADY_EXIST', 'FAIL');
                         console.log("connection to sfdc");
                         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                             console.log('connected');
@@ -594,7 +581,7 @@ module.exports = {
                                                             email: user.Email,
                                                             // domain: user.Website
                                                         });
-                                                        res.ok({message:'Account Created'}, 'CREATED');
+                                                        res.ok({message: 'Account Created'}, 'CREATED');
                                                     });
                                             })
                                     })
@@ -619,15 +606,15 @@ module.exports = {
                                         // domain: user.Website
                                     });
                                     console.log("creating lead in postgre");
-                                    Lead.create(user).then(user=>{
-                                      console.log("created on postgre")
+                                    Lead.create(user).then(user => {
+                                        console.log("created on postgre")
                                     }).catch(error => {
                                         console.log(error);
-                                        return res.ok(error,'SERVER_ERROR','FAIL');
+                                        return res.ok(error, 'SERVER_ERROR', 'FAIL');
                                     });
-                                    return res.ok({message:'Account Created'}, 'CREATED');
+                                    return res.ok({message: 'Account Created'}, 'CREATED');
                                 }).catch(error => {
-                                    console.log('unable to create lead');
+                                console.log('unable to create lead');
                                 console.error(error);
                                 res.ok(error, "SFDC Error", "FAIL");
                             })
@@ -638,6 +625,305 @@ module.exports = {
             console.log(error)
             res.ok(error, "Token_Error", 'FAIL')
         })
-    }
+    },
+    signup: (req, res) => {
+        var lead = {};
+        FirebaseService.verifyIdToken(req.body.idToken)
+            .then(response => {
+                lead.FirstName = req.body.firstName || '';
+                lead.LastName = req.body.lastName || 'Unknown';
+                lead.RecordTypeId = req.body.recordTypeId || '01228000000SbEwAAK';
+                lead.Company = req.body.company;
+                lead.Email = req.body.email;
+                lead.Website = req.body.domain;
+                lead.Status = 'Interest';
+                lead.LeadSource = 'Website';
+                lead.uid__c = response.uid;
+                lead.ART__c = req.body.type;
+                lead.CRT__c = 'Associate';
+                lead.StatusPerson__c = 'ACTIVE';
+                lead.DOB__c = req.body.dob || '';
+                if (req.body.type === 'Member') Lead.CRT__c = 'Member';
+                console.log(lead);
+                Contact.findOne({Email: lead.Email})
+                    .then(contact => {
+                        if (contact) {
+                            sails.log.info('postgre contact found');
+                            if(contact.StatusPerson__c === 'RECOVERY') return res.ok({message:'Account previously created. Sign-In or reset password'},'RECOVERY','FAIL');
+                            if(contact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message:'Your account is locked. Contact Support'},'LOCKER_OUT','FAIL');
+                            if(contact.StatusPerson__c === 'ACTIVE') return res.ok({message:'Account already created. Sign-In instead'},'ACTIVE','FAIL');
+                            if(contact.StatusPerson__c === 'PROVISIONED') return res.ok({message:'Prior Account authentication timed out. Check email'},'PROVISIONED','FAIL');
+                            if(contact.StatusPerson__c === 'PW_EXPIRED') return res.ok({message:'Account already created but password expired'},'PW_EXPIRED','FAIL');
+                            if(contact.StatusPerson__c === 'SUSPENDED') return res.ok({message:'Account suspended. Contact support to Activate'},'SUSPENDED','FAIL');
+                            if(contact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message:'Your account has been deprovisioned. Contact Support'},'DEPROVISIONED','FAIL');
+                            SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                            sails.log.info('setting status active in postgre contact')
+                            Contact.update({Email: lead.Email},{StatusPerson__c: 'ACTIVE'})
+                                .then(contact=>{
+                                    sails.log.info('done');
+                                    FirebaseService.createUserViaUid(lead.uid__c, {
+                                        name: response.name,
+                                        email: response.email,
+                                        domain: lead.Website
+                                    });
+                                    return res.ok({message:'SUCCESS'},'SUCCESS')
+                                });
+                        } else {
+                            Lead.findOne({Email: lead.Email})
+                                .then(postgreLeads => {
+                                    if (postgreLeads) {
+                                        sails.log.info('postgre lead found');
+                                        sails.log.info('updating postgre lead');
+                                        Lead.update({Email: lead.Email}, {
+                                            StatusPerson__c: lead.StatusPerson__c,
+                                            Status: lead.Status,
+                                            CRT__c: lead.CRT__c,
+                                            ART__c: lead.ART__c
+                                        }).then(updatedPostgreLead => {
+                                                SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                                SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                                FirebaseService.createUserViaUid(lead.uid__c, {
+                                                    name: response.name,
+                                                    email: response.email,
+                                                    domain: lead.Website
+                                                });
+                                                return res.ok({message: 'SUCCESS'},'SUCCESS')
+                                            }).catch(error=>{
+                                                sails.log.info('ubable to uppdate postgre lead');
+                                                return res.ok('Unable to update existing postgre lead','ERROR','FAIL');
+                                        })
+                                    } else {
+                                        sails.log.info('leads not found');
+                                        sails.log.info('connecting to sfdc')
+                                        conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                                            if (!error) sails.log.info('Connected');
+                                            sails.log.info('creating sfdc lead')
+                                            conn.sobject('Lead').create(lead)
+                                                .then(createdSFDCLead => {
+                                                    sails.log.info('sfdc lead created');
+                                                    sails.log.info('creating postgre lead');
+                                                    Lead.create(lead)
+                                                        .then(createdPostgresLead => {
+                                                            sails.log.info('calling segment\'s identify');
+                                                            SegmentService.identifyTrait(lead.uid__c, lead);
+                                                            sails.log.info('calling segment\'s track')
+                                                            SegmentService.track(lead.uid__c, 'Lead Added', lead.Email);
+                                                            SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                                            SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                                            FirebaseService.createUserViaUid(lead.uid__c, {
+                                                                name: response.name,
+                                                                email: response.email,
+                                                                domain: lead.Website
+                                                            });
+                                                            return res.ok({message: 'SUCCESS'}, 'SUCCESS')
+                                                        }).catch(error => {
+                                                        console.log(error)
+                                                    })
 
+                                                }).catch(error => {
+                                                sails.log.info('unable to create sfdc lead');
+                                                if (error.errorCode === 'DUPLICATES_DETECTED') {
+                                                    sails.log.info('record already exist in sfdc');
+                                                    sails.log.info('finding existing sfdc leads');
+                                                    conn.sobject('Lead').find({Email: lead.Email})
+                                                        .then(fetchedSFDCLeads => {
+                                                            sails.log.info('found');
+                                                            sails.log.info('applying merging algorythm');
+                                                            SfdcService.mergeSfdcLeads(fetchedSFDCLeads, (masterLead, duplicates) => {
+                                                                sails.log.info('applied')
+                                                                sails.log.info('preparing master lead for insertion');
+                                                                masterLead = FilterService.cleanLead(masterLead);
+                                                                sails.log.info('prepared');
+                                                                sails.log.info('updating master lead');
+                                                                conn.sobject('Lead').update(masterLead)
+                                                                    .then(updatedMasterLead=>{
+                                                                        sails.log.info('updated');
+                                                                        sails.log.info('deleting duplicat leads');
+                                                                        if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                                        lead.Id = updatedMasterLead.id;
+                                                                        sails.log.info('merging current data with master record');
+                                                                        conn.sobject('Lead').update(lead)
+                                                                            .then(finalSFDCLead=>{
+                                                                                sails.log.info('merged');
+                                                                                sails.log.info('calling segment');
+                                                                                SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                                                                SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                                                                sails.log.info('creating firebase entry');
+                                                                                FirebaseService.createUserViaUid(lead.uid__c, {
+                                                                                    name: response.name,
+                                                                                    email: response.email,
+                                                                                    domain: lead.Website
+                                                                                });
+                                                                                res.ok({message:'SUCCESS'},'SUCCESS');
+                                                                            }).catch(error=>{
+                                                                                sails.log.info('unable to merge current data with master record');
+                                                                                res.ok({message:'Unable to merge current data with master record'},'ERROR','FAIL');
+                                                                        })
+                                                                    }).catch(error=>{
+                                                                        sails.log.info('unable to update master lead');
+                                                                        res.ok({message: 'unable to update master lead'},'ERROR','FAIL')
+                                                                });
+                                                            })
+                                                        }).catch(error=>{
+                                                            console.log('unable to find sfdc lead');
+                                                            res.ok({message:'Unable to find existing sfdc leads'},'ERROR','FAIL')
+                                                    });
+                                                }
+                                            })
+                                        });
+                                    }
+                                })
+                        }
+                    })
+            }).catch(error=>{
+                res.ok('Token Expired','TOKEN_EXPIRE','FAIL');
+        })
+    },
+    emailSignUp: (req,res)=>{
+        var lead = {};
+        lead.FirstName = req.body.firstName || '';
+        lead.LastName = req.body.lastName || 'Unknown';
+        lead.RecordTypeId = req.body.recordTypeId || '01228000000SbEwAAK';
+        lead.Company = req.body.company;
+        lead.Email = req.body.email;
+        lead.Website = req.body.domain;
+        lead.Status = 'Interest';
+        lead.LeadSource = 'Website';
+        lead.ART__c = req.body.type;
+        lead.CRT__c = 'Associate';
+        lead.StatusPerson__c = 'PROVISIONED';
+        lead.DOB__c = req.body.dob || '';
+        if (req.body.type === 'Member') Lead.CRT__c = 'Member';
+        console.log(lead);
+        Contact.findOne({Email: lead.Email})
+            .then(contact => {
+                if (contact) {
+                    sails.log.info('postgre contact found');
+                    if(contact.StatusPerson__c === 'RECOVERY') return res.ok({message:'Account previously created. Sign-In or reset password'},'RECOVERY','FAIL');
+                    if(contact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message:'Your account is locked. Contact Support'},'LOCKER_OUT','FAIL');
+                    if(contact.StatusPerson__c === 'ACTIVE') return res.ok({message:'Account already created. Sign-In instead'},'ACTIVE','FAIL');
+                    if(contact.StatusPerson__c === 'PROVISIONED') return res.ok({message:'Prior Account authentication timed out. Check email'},'PROVISIONED','FAIL');
+                    if(contact.StatusPerson__c === 'PW_EXPIRED') return res.ok({message:'Account already created but password expired'},'PW_EXPIRED','FAIL');
+                    if(contact.StatusPerson__c === 'SUSPENDED') return res.ok({message:'Account suspended. Contact support to Activate'},'SUSPENDED','FAIL');
+                    if(contact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message:'Your account has been deprovisioned. Contact Support'},'DEPROVISIONED','FAIL');
+                    SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                    sails.log.info('setting status active in postgre contact')
+                    Contact.update({Email: lead.Email},{StatusPerson__c: 'ACTIVE'})
+                        .then(contact=>{
+                            sails.log.info('done');
+                            FirebaseService.createUserViaUid(lead.uid__c, {
+                                name: response.name,
+                                email: response.email,
+                                domain: lead.Website
+                            });
+                            return res.ok({message:'SUCCESS'},'SUCCESS')
+                        });
+                } else {
+                    Lead.findOne({Email: lead.Email})
+                        .then(postgreLeads => {
+                            if (postgreLeads) {
+                                sails.log.info('postgre lead found');
+                                sails.log.info('updating postgre lead');
+                                Lead.update({Email: lead.Email}, {
+                                    StatusPerson__c: lead.StatusPerson__c,
+                                    Status: lead.Status,
+                                    CRT__c: lead.CRT__c,
+                                    ART__c: lead.ART__c
+                                }).then(updatedPostgreLead => {
+                                    SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                    SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                    FirebaseService.createUserViaUid(lead.uid__c, {
+                                        name: response.name,
+                                        email: response.email,
+                                        domain: lead.Website
+                                    });
+                                    return res.ok({message: 'SUCCESS'},'SUCCESS')
+                                }).catch(error=>{
+                                    sails.log.info('ubable to uppdate postgre lead');
+                                    return res.ok('Unable to update existing postgre lead','ERROR','FAIL');
+                                })
+                            } else {
+                                sails.log.info('leads not found');
+                                sails.log.info('connecting to sfdc')
+                                conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                                    if (!error) sails.log.info('Connected');
+                                    sails.log.info('creating sfdc lead')
+                                    conn.sobject('Lead').create(lead)
+                                        .then(createdSFDCLead => {
+                                            sails.log.info('sfdc lead created');
+                                            sails.log.info('creating postgre lead');
+                                            Lead.create(lead)
+                                                .then(createdPostgresLead => {
+                                                    sails.log.info('calling segment\'s identify');
+                                                    SegmentService.identifyTrait(lead.uid__c, lead);
+                                                    sails.log.info('calling segment\'s track')
+                                                    SegmentService.track(lead.uid__c, 'Lead Added', lead.Email);
+                                                    SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                                    SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                                    FirebaseService.createUserViaUid(lead.uid__c, {
+                                                        name: response.name,
+                                                        email: response.email,
+                                                        domain: lead.Website
+                                                    });
+                                                    return res.ok({message: 'SUCCESS'}, 'SUCCESS')
+                                                }).catch(error => {
+                                                console.log(error)
+                                            })
+
+                                        }).catch(error => {
+                                        sails.log.info('unable to create sfdc lead');
+                                        if (error.errorCode === 'DUPLICATES_DETECTED') {
+                                            sails.log.info('record already exist in sfdc');
+                                            sails.log.info('finding existing sfdc leads');
+                                            conn.sobject('Lead').find({Email: lead.Email})
+                                                .then(fetchedSFDCLeads => {
+                                                    sails.log.info('found');
+                                                    sails.log.info('applying merging algorythm');
+                                                    SfdcService.mergeSfdcLeads(fetchedSFDCLeads, (masterLead, duplicates) => {
+                                                        sails.log.info('applied')
+                                                        sails.log.info('preparing master lead for insertion');
+                                                        masterLead = FilterService.cleanLead(masterLead);
+                                                        sails.log.info('prepared');
+                                                        sails.log.info('updating master lead');
+                                                        conn.sobject('Lead').update(masterLead)
+                                                            .then(updatedMasterLead=>{
+                                                                sails.log.info('updated');
+                                                                sails.log.info('deleting duplicat leads');
+                                                                if (duplicates) conn.sobject('Lead').del(duplicates);
+                                                                lead.Id = updatedMasterLead.id;
+                                                                sails.log.info('merging current data with master record');
+                                                                conn.sobject('Lead').update(lead)
+                                                                    .then(finalSFDCLead=>{
+                                                                        sails.log.info('merged');
+                                                                        sails.log.info('calling segment');
+                                                                        SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
+                                                                        SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
+                                                                        sails.log.info('creating firebase entry');
+                                                                        FirebaseService.createUserViaUid(lead.uid__c, {
+                                                                            name: response.name,
+                                                                            email: response.email,
+                                                                            domain: lead.Website
+                                                                        });
+                                                                        res.ok({message:'SUCCESS'},'SUCCESS');
+                                                                    }).catch(error=>{
+                                                                    sails.log.info('unable to merge current data with master record');
+                                                                    res.ok({message:'Unable to merge current data with master record'},'ERROR','FAIL');
+                                                                })
+                                                            }).catch(error=>{
+                                                            sails.log.info('unable to update master lead');
+                                                            res.ok({message: 'unable to update master lead'},'ERROR','FAIL')
+                                                        });
+                                                    })
+                                                }).catch(error=>{
+                                                console.log('unable to find sfdc lead');
+                                                res.ok({message:'Unable to find existing sfdc leads'},'ERROR','FAIL')
+                                            });
+                                        }
+                                    })
+                                });
+                            }
+                        })
+                }
+            })
+    }
 };
