@@ -24,7 +24,6 @@ module.exports = {
         return admin.auth().getUserByEmail(email);
     },
     createUserViaUid: (uid, data) => {
-        console.log("Creating User");
         db.ref('users/' + uid).set(data);
     },
     updateUser: (uid, data) => {

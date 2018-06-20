@@ -166,7 +166,9 @@ module.exports = {
         StoreThree__c : "string",
         StoreFour__c : "string",
         StoreFive__c : "string",
+        Onboarding__c: "boolean",
         FullContactUpdated__c : "datetime",
+        MemberName__c: 'string',
         Id : "integer"
 
     }

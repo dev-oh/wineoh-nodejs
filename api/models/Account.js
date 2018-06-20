@@ -194,7 +194,7 @@ module.exports = {
         Action__pc : "string",
         AnonymousId__pc : "string",
         Adult__pc : "boolean",
-        Primary__pc : "boolean",
+        // Primary__pc : "boolean", //deleted
         Logins__pc : "float",
         No_Show_CP__pc : "boolean",
         LID__LinkedIn_Company_Id__pc : "string",
@@ -310,11 +310,12 @@ module.exports = {
         OOTO__pc : "boolean",
         SequencingActive__pc : "boolean",
         TaskDueDatetimeActive__pc : "datetime",
-        GooglePlusURLCompany__pc : "string",
+        // GooglePlusURLCompany__pc : "string", //deleted
         Extension__pc : "string",
         PhoneOther__pc : "string",
         Meeting_Type_CP__pc : "string",
         DOB__pc : "date",
+        FeedNotification__c: 'string',
         Id : "integer",
     }
 };

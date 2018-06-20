@@ -35,5 +35,11 @@ module.exports = {
         delete lead.TargetLinkedin__c;
         delete lead.AccountId__c;
         return lead;
+    },
+    cleanLeadForPostgres: (lead)=>{
+        delete lead.LastModifiedDate;
+        delete lead.CreatedDate;
+        delete lead.Zendesk__Last_Sync_Date__c
+        return lead;
     }
 }

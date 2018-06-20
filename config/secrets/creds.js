@@ -12,8 +12,12 @@ const GETSTREAM_CRED = {
     appId: '31436',
     server: 'us-east'
 }
+const AUTOPILOT_CRED = {
+    apiKey: 'ffbe8a109574442b9690add8813cdab6'
+}
 module.exports = {
     salesforceCreds: SALSEFORCE_CRED,
     zendeskCreds: ZENDESK_CRED,
-    getstreamCreds : GETSTREAM_CRED
+    getstreamCreds : GETSTREAM_CRED,
+    autopilotCreds: AUTOPILOT_CRED
 }

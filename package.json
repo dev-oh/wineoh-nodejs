@@ -28,7 +28,9 @@
     "lodash": "^4.17.10",
     "moment": "^2.22.1",
     "password-generator": "^2.2.0",
+    "randomstring": "^1.1.5",
     "rc": "1.2.1",
+    "request": "^2.87.0",
     "sails": "~0.12.13",
     "sails-disk": "~0.10.9",
     "sails-hook-tasks": "^1.1.2",
@@ -36,7 +38,8 @@
     "shortid": "^2.2.8",
     "soap": "^0.24.0",
     "uuid": "^3.2.1",
-    "waterline-salesforce": "^2.0.1"
+    "waterline-salesforce": "^2.0.1",
+    "xmlbuilder": "^10.0.0"
   },
   "scripts": {
     "debug": "node debug app.js",

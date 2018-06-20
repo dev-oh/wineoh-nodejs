@@ -22,5 +22,23 @@ module.exports = {
                 })
             })
         })
+    },
+    callCb: (email,cb)=>{
+        connection.login(creds.salesforceCreds.email, creds.salesforceCreds.password, (error, response) => {
+            if (error) return cb(error,false)
+            const sessionId = connection.accessToken;
+            soap.createClient(url, (error, client) => {
+                if (error) return sails.log.error(error);
+                client.addSoapHeader({
+                    SessionHeader: {
+                        sessionId: sessionId
+                    }
+                });
+                client.createLead({email: email}, (error, response, body) => {
+                    if (error) return cb(error,false);
+                    cb(null,true);
+                })
+            })
+        })
     }
 }
