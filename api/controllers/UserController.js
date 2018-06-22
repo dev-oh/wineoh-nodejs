@@ -1310,6 +1310,7 @@ module.exports = {
                                                                                                                 flag.postgresAccount = false;
                                                                                                                 flag.sfdcAccount = true;
                                                                                                             } else {
+                                                                                                                flag.sfdcAccount = false;
                                                                                                             }
                                                                                                             SegmentService.track(req.user.uid, 'Lead Converted', req.user.email);
                                                                                                             sails.log.info('creating feed item');
@@ -1327,110 +1328,117 @@ module.exports = {
                                                                                                             }).catch(error => {
                                                                                                                 sails.log.error(error)
                                                                                                             });
-                                                                                                            sails.log.info('converting lead');
-                                                                                                            JsForceService.convertLead(store.Lead.Id, store.Account ? store.Account.Id : null, (error, response) => {
-                                                                                                                if (error) {
-                                                                                                                    SegmentService.trackBy(req.user.uid, 'Lead Error', {
-                                                                                                                        Email: req.user.email,
-                                                                                                                        Errors: error
-                                                                                                                    });
-                                                                                                                    return res(error, "Converting Error", "FAIL");
-                                                                                                                }
-                                                                                                                sails.log.info('lead converted');
-                                                                                                                sails.log.info('fetching new lead data from sfdc');
-                                                                                                                conn.sobject('Contact').findOne({Email: req.user.email})
-                                                                                                                    .then(sfdcContact => {
-                                                                                                                        sails.log.info('fetched');
-                                                                                                                        if (sfdcContact) {
-                                                                                                                            sails.log.info('setting sfdc contact into store');
-                                                                                                                            store.Contact = sfdcContact;
-                                                                                                                            flag.sfdcContact = true;
+                                                                                                            sails.log.info("updating lead before converting");
+                                                                                                            conn.sobject('Lead').update({
+                                                                                                                Id: store.Lead.Id,
+                                                                                                                CRT__c: flag.sfdcAccount ? "Associate" : "Administrator"
+                                                                                                            })
+                                                                                                                .then(result => {
+                                                                                                                    sails.log.info('converting lead');
+                                                                                                                    JsForceService.convertLead(store.Lead.Id, store.Account ? store.Account.Id : null, (error, response) => {
+                                                                                                                        if (error) {
+                                                                                                                            SegmentService.trackBy(req.user.uid, 'Lead Error', {
+                                                                                                                                Email: req.user.email,
+                                                                                                                                Errors: error
+                                                                                                                            });
+                                                                                                                            return res(error, "Converting Error", "FAIL");
                                                                                                                         }
-                                                                                                                        conn.sobject('Account').findOne({Domain__c: firebaseDBUser.domain})
-                                                                                                                            .then(sfdcAccount => {
-                                                                                                                                if (sfdcAccount) {
-                                                                                                                                    sails.log.info('setting sfdc account into store');
-                                                                                                                                    store.Account = sfdcAccount;
-                                                                                                                                    flag.sfdcAccount = true;
+                                                                                                                        sails.log.info('lead converted');
+                                                                                                                        sails.log.info('fetching new lead data from sfdc');
+                                                                                                                        conn.sobject('Contact').findOne({Email: req.user.email})
+                                                                                                                            .then(sfdcContact => {
+                                                                                                                                sails.log.info('fetched');
+                                                                                                                                if (sfdcContact) {
+                                                                                                                                    sails.log.info('setting sfdc contact into store');
+                                                                                                                                    store.Contact = sfdcContact;
+                                                                                                                                    flag.sfdcContact = true;
                                                                                                                                 }
-                                                                                                                                // console.log({account: store.Account,contact:store.Contact})
-                                                                                                                                if (flag.customer && !store.Account.FeedNotification__c) {
-                                                                                                                                    sails.log.info('no FeedNotification__c in account')
-                                                                                                                                    sails.log.info('user is customer and now seting up company flight');
-                                                                                                                                    FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                                                }
-                                                                                                                                if (!store.Contact.MemberName__c) {
-                                                                                                                                    sails.log.info('no MemberName__c in contact')
-                                                                                                                                    setMemberIdV2(store.Contact, (updatedContact) => {
-                                                                                                                                        store.Contact = updatedContact;
-                                                                                                                                        if (flag.customer) {
-                                                                                                                                            sails.log.info('setting up user flight')
-                                                                                                                                            FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
-                                                                                                                                                SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Customer Added: PendingReview',
-                                                                                                                                                    ParentId: store.Contact.Id,
-                                                                                                                                                    Type: 'AdvanceTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '005280000053XVoAAM'
-                                                                                                                                                });
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Customer Activated: PendingReview',
-                                                                                                                                                    ParentId: store.Contact.Id,
-                                                                                                                                                    Type: 'AdvancedTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '005280000053XVoAAM',
-                                                                                                                                                });
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Associate Added: PendingReview',
-                                                                                                                                                    ParentId: store.Contact.Id,
-                                                                                                                                                    Type: 'AdvancedTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '005280000053XVoAAM',
-                                                                                                                                                });
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Customer Welcome Message: PendingReview',
-                                                                                                                                                    ParentId: store.Contact.Id,
-                                                                                                                                                    Type: 'AdvancedTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Welcome to Wine-Oh!', '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '005280000051o2xAAA',
-                                                                                                                                                });
-                                                                                                                                            });
-                                                                                                                                        } else {
-                                                                                                                                            FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
-                                                                                                                                                SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Member Added: PendingReview',
-                                                                                                                                                    ParentId: store.Account.Id,
-                                                                                                                                                    Type: 'AdvanceTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '05280000053XVoAAM'
-                                                                                                                                                });
-                                                                                                                                                Post__c.create({
-                                                                                                                                                    Title: 'Member Welcome Message: PendingReview',
-                                                                                                                                                    ParentId: store.Account.Id,
-                                                                                                                                                    Type: 'AdvancedTextPost',
-                                                                                                                                                    Status: 'PendingReview',
-                                                                                                                                                    Body: XmlService.buildForPost(store.Account.Id, 'Member', 'Notify', 'notify', store.Contact.Id, 'Welcome to Wine-Oh!', '0012800001a7DInAAE'),
-                                                                                                                                                    CreatedById: '005280000051o2xAAA',
-                                                                                                                                                });
+                                                                                                                                conn.sobject('Account').findOne({Domain__c: firebaseDBUser.domain})
+                                                                                                                                    .then(sfdcAccount => {
+                                                                                                                                        if (sfdcAccount) {
+                                                                                                                                            sails.log.info('setting sfdc account into store');
+                                                                                                                                            store.Account = sfdcAccount;
+                                                                                                                                            flag.sfdcAccount = true;
+                                                                                                                                        }
+                                                                                                                                        // console.log({account: store.Account,contact:store.Contact})
+                                                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) {
+                                                                                                                                            sails.log.info('no FeedNotification__c in account')
+                                                                                                                                            sails.log.info('user is customer and now seting up company flight');
+                                                                                                                                            FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                                        }
+                                                                                                                                        if (!store.Contact.MemberName__c) {
+                                                                                                                                            sails.log.info('no MemberName__c in contact')
+                                                                                                                                            setMemberIdV2(store.Contact, (updatedContact) => {
+                                                                                                                                                store.Contact = updatedContact;
+                                                                                                                                                if (flag.customer) {
+                                                                                                                                                    sails.log.info('setting up user flight')
+                                                                                                                                                    FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                                                        SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Customer Added: PendingReview',
+                                                                                                                                                            ParentId: store.Contact.Id,
+                                                                                                                                                            Type: 'AdvanceTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '005280000053XVoAAM'
+                                                                                                                                                        });
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Customer Activated: PendingReview',
+                                                                                                                                                            ParentId: store.Contact.Id,
+                                                                                                                                                            Type: 'AdvancedTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '005280000053XVoAAM',
+                                                                                                                                                        });
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Associate Added: PendingReview',
+                                                                                                                                                            ParentId: store.Contact.Id,
+                                                                                                                                                            Type: 'AdvancedTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '005280000053XVoAAM',
+                                                                                                                                                        });
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Customer Welcome Message: PendingReview',
+                                                                                                                                                            ParentId: store.Contact.Id,
+                                                                                                                                                            Type: 'AdvancedTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Welcome to Wine-Oh!', '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '005280000051o2xAAA',
+                                                                                                                                                        });
+                                                                                                                                                    });
+                                                                                                                                                } else {
+                                                                                                                                                    FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                                                        SegmentService.track(req.user.uid, 'Member Added', req.user.email);
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Member Added: PendingReview',
+                                                                                                                                                            ParentId: store.Account.Id,
+                                                                                                                                                            Type: 'AdvanceTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '05280000053XVoAAM'
+                                                                                                                                                        });
+                                                                                                                                                        Post__c.create({
+                                                                                                                                                            Title: 'Member Welcome Message: PendingReview',
+                                                                                                                                                            ParentId: store.Account.Id,
+                                                                                                                                                            Type: 'AdvancedTextPost',
+                                                                                                                                                            Status: 'PendingReview',
+                                                                                                                                                            Body: XmlService.buildForPost(store.Account.Id, 'Member', 'Notify', 'notify', store.Contact.Id, 'Welcome to Wine-Oh!', '0012800001a7DInAAE'),
+                                                                                                                                                            CreatedById: '005280000051o2xAAA',
+                                                                                                                                                        });
+                                                                                                                                                    });
+                                                                                                                                                }
                                                                                                                                             });
                                                                                                                                         }
+                                                                                                                                        FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
+                                                                                                                                        if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                                        if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
+                                                                                                                                        else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                                                        return res.ok(store.Contact, 'SUCCESS');
                                                                                                                                     });
-                                                                                                                                }
-                                                                                                                                FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                                                if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
-                                                                                                                                if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
-                                                                                                                                else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                                                return res.ok(store.Contact, 'SUCCESS');
                                                                                                                             });
                                                                                                                     });
-                                                                                                            });
+                                                                                                                });
                                                                                                         });
                                                                                                 });
                                                                                         });
@@ -1774,8 +1782,8 @@ module.exports = {
                                                                     }
                                                                 })
                                                         } else {
-                                                            sails.log.info('no postgres contact found')
-                                                            res.ok({message: 'Contact Support'}, 'CONTACT_SUPPORT', 'FAIL')
+                                                            sails.log.info('account not exist in any db');
+                                                            return res.ok({message: 'No Account Exist'}, "NOT_FOUND", "FAIL");
                                                         }
                                                     })
                                             }
