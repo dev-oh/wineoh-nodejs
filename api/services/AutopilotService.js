@@ -4,7 +4,7 @@ var request = require('request');
 module.exports = {
     startJourny: (id,type)=>{
         var triggerId = '0002';
-        if(type === 'customer') triggerId = '0003';
+        if(type === 'customer') triggerId = '0006';
         request({
             method: 'POST',
             url: 'https://api2.autopilothq.com/v1/trigger/'+triggerId+'/contact/'+id,
