@@ -385,7 +385,10 @@ module.exports = {
                                 }
                             } else {
                                 sails.log.info('postgres contact not exist');
+                                sails.log.info('connecting to the sfdc server');
                                 conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                                    if(error) sails.log.info("Unable to connect to sfdc");
+                                    else sails.log.info('connected');
                                     conn.sobject('Contact').findOne({uid__c: req.user.uid})
                                         .then(sfdcContact => {
                                             if (sfdcContact.RecordTypeId === '01228000000TLjuAAG' || sfdcContact.RecordTypeId === '01228000000TLjzAAG') {
@@ -423,7 +426,10 @@ module.exports = {
                                                 AutopilotService.startJourny(sfdcContact.Email, 'member');
                                                 return res.ok(sfdcContact, 'SUCCESS');
                                             }
-                                        });
+                                        }).catch(error=>{
+                                            sails.log.info('unable to find contact');
+                                            return res.ok('Unable to fetch data from sfdc','ERROR','FAIL');
+                                    });
                                 });
                             }
                         }).catch(error => {
@@ -443,7 +449,7 @@ module.exports = {
                                 SfdcService.mergeSfdcLeads(postgreLead, (masterPostgreLead, duplicates) => {
                                     sails.log.info('applied');
                                     sails.log.info('updating master postgres lead');
-                                    masterPostgreLead = FilterService.cleanLeadForPostgres(masterPostgreLead)
+                                    masterPostgreLead = FilterService.cleanLeadForPostgres(masterPostgreLead);
                                     Lead.update({Id: masterPostgreLead.Id}, masterPostgreLead)
                                         .then(updatadMastarPostgreLead => {
                                             sails.log.info('updated')
@@ -937,7 +943,8 @@ module.exports = {
                                         res.ok({message: 'Unable to update master postgre lead after merging'}, 'ERROR', 'FAIL')
                                     });
                                 })
-                            } else {
+                            }
+                            else {
                                 sails.log.info('no postgre lead exist');
                                 sails.log.info('connecting to sfdc database');
                                 conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {

@@ -61,7 +61,7 @@ module.exports = {
             Email: req.body.email,
             TOSAcceptanceDate__c: Date.now(),
             TOSAcceptanceIP__c: req.ip
-        }
+        };
 
         conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
             conn.query("SELECT Id FROM Lead WHERE Email = '" + user.Email + "'", function (err, result) {

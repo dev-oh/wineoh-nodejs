@@ -39,7 +39,8 @@ module.exports = {
     cleanLeadForPostgres: (lead)=>{
         delete lead.LastModifiedDate;
         delete lead.CreatedDate;
-        delete lead.Zendesk__Last_Sync_Date__c
+        delete lead.Zendesk__Last_Sync_Date__c;
+        delete lead.TOSAcceptanceDate__c;
         return lead;
     }
 }
