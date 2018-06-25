@@ -359,13 +359,13 @@ module.exports = {
                                         .then(postgreAccount => {
                                             sails.log.info('account status is ' + postgreAccount.StatusAccount__c);
                                             sails.log.info('contact status is ' + postgreContact.StatusPerson__c);
-                                            if (postgreAccount.StatusAccount__c === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
-                                            if (postgreAccount.StatusAccount__c === 'ON HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
-                                            if (postgreAccount.StatusAccount__c === 'INACIVE') Account.update({originalId: postgreContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
-                                            if (postgreContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
+                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
+                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') Account.update({originalId: postgreContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
                                             if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
                                             sails.log.info('starting asutopilot journy');
                                             AutopilotService.startJourny(postgreContact.Email, 'customer');
@@ -400,15 +400,15 @@ module.exports = {
                                                 sails.log.info('fetching account from sfdc');
                                                 conn.sobject('Account').findOne({Id: sfdcContact.AccountId})
                                                     .then(sfdcAccount => {
-                                                        sails.log.info('account status is ' + sfdcAccount.StatusAccount__c);
+                                                        sails.log.info('account status is ' + sfdcAccount.StatusAccount__c.toUpperCase());
                                                         sails.log.info('contact status is ' + sfdcContact.StatusPerson__c);
-                                                        if (sfdcAccount.StatusAccount__c === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
-                                                        if (sfdcAccount.StatusAccount__c === 'ON HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
-                                                        if (sfdcAccount.StatusAccount__c === 'INACIVE') Account.update({originalId: sfdcContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
-                                                        if (sfdcContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                        if (sfdcContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                        if (sfdcContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                        if (sfdcContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it.'}, 'AC_ON-HOLD', 'FAIL');
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACIVE') Account.update({originalId: sfdcContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
                                                         if (sfdcContact.Onboarding__c) return res.ok(sfdcContact, 'SUCCESS');
                                                         sails.log.info('starting asutopilot journy');
                                                         AutopilotService.startJourny(sfdcContact.Email, 'customer');
@@ -467,10 +467,10 @@ module.exports = {
                                                         store.Account = postgreAccount;
                                                         flag.postgresAccount = true;
                                                         flag.sfdcAccount = false;
-                                                        if (postgreAccount.StatusAccount__c === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
-                                                        if (postgreAccount.StatusAccount__c === 'ON HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
+                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                                         store.Lead.CRT__c = 'Associate'
-                                                        if (postgreAccount.StatusAccount__c === 'INACIVE') {
+                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
                                                             sails.log.info('account status is inactive');
                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                             store.Lead.CRT__c = 'Administrator';
@@ -977,10 +977,10 @@ module.exports = {
                                                                         store.Account = postgreAccount;
                                                                         flag.postgresAccount = true;
                                                                         flag.sfdcAccount = false;
-                                                                        if (postgreAccount.StatusAccount__c === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
-                                                                        if (postgreAccount.StatusAccount__c === 'ON HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
-                                                                        store.Lead.CRT__c = 'Associate'
-                                                                        if (postgreAccount.StatusAccount__c === 'INACIVE') {
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
+                                                                        store.Lead.CRT__c = 'Associate';
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
                                                                             sails.log.info('account status is inactive');
                                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                                             store.Lead.CRT__c = 'Administrator';
@@ -1477,10 +1477,10 @@ module.exports = {
                                                                         store.Account = postgreAccount;
                                                                         flag.postgresAccount = true;
                                                                         flag.sfdcAccount = false;
-                                                                        if (postgreAccount.StatusAccount__c === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
-                                                                        if (postgreAccount.StatusAccount__c === 'ON HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                                                         store.Lead.CRT__c = 'Associate'
-                                                                        if (postgreAccount.StatusAccount__c === 'INACIVE') {
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
                                                                             sails.log.info('account status is inactive');
                                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                                             store.Lead.CRT__c = 'Administrator';

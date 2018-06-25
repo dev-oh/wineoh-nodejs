@@ -1085,7 +1085,6 @@ module.exports = {
             sails.log.info('passwordless signup');
             FirebaseService.createUserViaEmail(req.body.email, lead.FirstName?lead.FirstName:''+' '+lead.LastName)
                 .then(response => {
-                    console.log(response)
                     lead.FirstName = req.body.firstName || '';
                     lead.LastName = req.body.lastName || 'Unknown';
                     lead.RecordTypeId = req.body.recordTypeId || '01228000000SbEwAAK';
@@ -1201,12 +1200,6 @@ module.exports = {
                                                                                     SegmentService.track(lead.uid__c, 'Lead Staged', lead.Email);
                                                                                     SegmentService.track(lead.uid__c, 'Lead Provisioned', lead.Email);
                                                                                     sails.log.info('creating firebase entry');
-                                                                                    console.log({
-                                                                                        uid: lead.uid__c,
-                                                                                        name:lead.FirstName?lead.FirstName:''+' '+lead.LastName,
-                                                                                        email: response.email,
-                                                                                        domain: lead.Website
-                                                                                    })
                                                                                     FirebaseService.createUserViaUid(lead.uid__c, {
                                                                                         name: lead.FirstName?lead.FirstName:''+' '+lead.LastName,
                                                                                         email: response.email,
