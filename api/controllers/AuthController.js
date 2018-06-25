@@ -760,7 +760,7 @@ module.exports = {
                                                                     }).catch(error => {
                                                                     if (error.errorCode === 'CANNOT_UPDATE_CONVERTED_LEAD') {
                                                                         sails.log.info('lead is converted');
-                                                                        return res.ok({message: 'Lead converted but not synced'}, 'ERROR', 'FAIL')
+                                                                        return res.ok({message: 'Account already created. Sign-In instead'}, 'ACTIVE', 'FAIL')
                                                                     }
                                                                     return res.ok({message: 'unable to update master lead'}, 'ERROR', 'FAIL')
                                                                 });
@@ -904,7 +904,7 @@ module.exports = {
                                                                             sails.log.info('unable to update master lead');
                                                                             if (error.errorCode === 'CANNOT_UPDATE_CONVERTED_LEAD') {
                                                                                 sails.log.info('lead is converted');
-                                                                                return res.ok({message: 'Lead converted but not synced'}, 'ERROR', 'FAIL')
+                                                                                return res.ok({message: 'Account already created. Sign-In instead'}, 'ACTIVE', 'FAIL')
                                                                             }
                                                                             return res.ok({message: 'unable to update master lead'}, 'ERROR', 'FAIL')
                                                                         });
@@ -1062,7 +1062,7 @@ module.exports = {
                                                                         }).catch(error => {
                                                                         if (error.errorCode === 'CANNOT_UPDATE_CONVERTED_LEAD') {
                                                                             sails.log.info('lead is converted');
-                                                                            return res.ok({message: 'Lead converted but not synced'}, 'ERROR', 'FAIL')
+                                                                            return res.ok({message: 'Account already created. Sign-In instead'}, 'ACTIVE', 'FAIL')
                                                                         }
                                                                         return res.ok({message: 'unable to update master lead'}, 'ERROR', 'FAIL')
                                                                     });
@@ -1220,7 +1220,7 @@ module.exports = {
                                                                         }).catch(error => {
                                                                         if (error.errorCode === 'CANNOT_UPDATE_CONVERTED_LEAD') {
                                                                             sails.log.info('lead is converted');
-                                                                            return res.ok({message: 'Lead converted but not synced'}, 'ERROR', 'FAIL')
+                                                                            return res.ok({message: 'Account already created. Sign-In instead'}, 'ACTIVE', 'FAIL')
                                                                         }
                                                                         return res.ok({message: 'unable to update master lead'}, 'ERROR', 'FAIL')
                                                                     });
@@ -1369,7 +1369,7 @@ module.exports = {
                                                                                 }).catch(error => {
                                                                                 if (error.errorCode === 'CANNOT_UPDATE_CONVERTED_LEAD') {
                                                                                     sails.log.info('lead is converted');
-                                                                                    return res.ok({message: 'Lead converted but not synced'}, 'ERROR', 'FAIL')
+                                                                                    return res.ok({message: 'Account already created. Sign-In instead'}, 'ACTIVE', 'FAIL')
                                                                                 }
                                                                                 return res.ok({message: 'unable to update master lead'}, 'ERROR', 'FAIL')
                                                                             });
