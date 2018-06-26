@@ -316,7 +316,10 @@ module.exports = {
         Meeting_Type_CP__pc : "string",
         DOB__pc : "date",
         FeedNotification__c: 'string',
-        Id : "integer",
+        Id : {
+            type: "integer",
+            columnName: 'id'
+        },
     }
 };
 

@@ -314,15 +314,30 @@ module.exports = {
     getTeam: (req, res) => {
         Contact.findOne({uid__c: req.user.uid})
             .then(user => {
-                Contact.find({AccountId: user.AccountId})
-                    .then(users => {
-                        var response = _.groupBy(users, e => {
-                            return e.StatusPerson__c
-                        });
-                        res.ok(response)
-                    }).catch(error => {
-                    res.ok(error, 'SERVER_ERROR', 'FAIL');
-                })
+                if(user){
+                    Contact.find({AccountId: user.AccountId})
+                        .then(users => {
+                            var response = _.groupBy(users, e => {
+                                return e.StatusPerson__c
+                            });
+                            res.ok(response)
+                        }).catch(error => {
+                        res.ok(error, 'SERVER_ERROR', 'FAIL');
+                    })
+                }else{
+                    conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                        conn.sobject('Contact').findOne({uid__c: req.user.uid})
+                            .then(user=>{
+                                conn.sobject('Contact').find({AccountId: user.AccountId})
+                                    .then(users=>{
+                                        var response = _.groupBy(users, e => {
+                                            return e.StatusPerson__c
+                                        });
+                                        res.ok(response)
+                                    })
+                            })
+                    });
+                }
             }).catch(error => {
             res.ok(error, 'SERVER_ERROR', 'FAIL')
         })
@@ -354,18 +369,22 @@ module.exports = {
                                     flag.member = false;
                                     sails.log.info('calling segment track (Customer Login)');
                                     SegmentService.track(req.user.uid, 'Customer Login', req.user.email);
-                                    sails.log.info('fetching account from sfdc');
+                                    sails.log.info('fetching account from postgres');
                                     Account.findOne({originalId: postgreContact.AccountId})
                                         .then(postgreAccount => {
                                             sails.log.info('account status is ' + postgreAccount.StatusAccount__c);
                                             sails.log.info('contact status is ' + postgreContact.StatusPerson__c);
-                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                             if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
-                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') Account.update({originalId: postgreContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
+                                            if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') Account.update({originalId: postgreContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
+                                            if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED') {
+                                                Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'});
+                                                return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
+                                            }
                                             if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
                                             sails.log.info('starting asutopilot journy');
                                             AutopilotService.startJourny(postgreContact.Email, 'customer');
@@ -402,13 +421,17 @@ module.exports = {
                                                     .then(sfdcAccount => {
                                                         sails.log.info('account status is ' + sfdcAccount.StatusAccount__c.toUpperCase());
                                                         sails.log.info('contact status is ' + sfdcContact.StatusPerson__c);
-                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                         if (sfdcAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it.'}, 'AC_ON-HOLD', 'FAIL');
-                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACIVE') Account.update({originalId: sfdcContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') conn.sobject('Account').update({Id: sfdcAccount.Id,StatusAccount__c: 'ACTIVE'}).then(result=>{console.log(result)});
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
-                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'ACTIVE'});
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED'){
+                                                            conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'RECOVERY'});
+                                                            return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
+                                                        }
                                                         if (sfdcContact.Onboarding__c) return res.ok(sfdcContact, 'SUCCESS');
                                                         sails.log.info('starting asutopilot journy');
                                                         AutopilotService.startJourny(sfdcContact.Email, 'customer');
@@ -452,7 +475,7 @@ module.exports = {
                                     masterPostgreLead = FilterService.cleanLeadForPostgres(masterPostgreLead);
                                     Lead.update({Id: masterPostgreLead.Id}, masterPostgreLead)
                                         .then(updatadMastarPostgreLead => {
-                                            sails.log.info('updated')
+                                            sails.log.info('updated');
                                             sails.log.info('deleting duplicates');
                                             Lead.destroy({Id: duplicates});
                                             sails.log.info('saving postgres lead to store');
@@ -467,10 +490,10 @@ module.exports = {
                                                         store.Account = postgreAccount;
                                                         flag.postgresAccount = true;
                                                         flag.sfdcAccount = false;
-                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                         if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                                         store.Lead.CRT__c = 'Associate'
-                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
+                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') {
                                                             sails.log.info('account status is inactive');
                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                             store.Lead.CRT__c = 'Administrator';
@@ -485,7 +508,7 @@ module.exports = {
                                                                     if (postgreContact.StatusPerson__c === 'UNPROVISIONED') return res.ok({message: 'Your account isn\'t provisioned. Contact Support'}, 'UNPROVISIONED', 'FAIL');
                                                                     if (postgreContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                                     if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
-                                                                    if (postgreContact.StatusPerson__c === 'PW_EXPIRED') store.Contact.StatusPerson__c = 'RECOVERY'; // reset password and then change Status to Recovery // update required
+                                                                    if (postgreContact.StatusPerson__c === 'PW_EXPIRED'){} store.Contact.StatusPerson__c = 'RECOVERY'; // reset password and then change Status to Recovery // update required
                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
@@ -495,11 +518,11 @@ module.exports = {
                                                                             .then(postgreMemberNameContact => {
                                                                                 if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                 else {
-                                                                                    setMemberName(postgreContact, () => {
+                                                                                    setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
                                                                                             FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvanceTextPost',
@@ -507,7 +530,7 @@ module.exports = {
                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -515,7 +538,7 @@ module.exports = {
                                                                                                     Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -523,7 +546,7 @@ module.exports = {
                                                                                                     Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -535,7 +558,7 @@ module.exports = {
                                                                                         } else {
                                                                                             FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                     Type: 'AdvanceTextPost',
@@ -543,7 +566,7 @@ module.exports = {
                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -590,7 +613,7 @@ module.exports = {
                                                                                             } else {
                                                                                             }
                                                                                             SegmentService.track(req.user.uid, 'Lead Converted', req.user.email);
-                                                                                            conn.sobject('Post__c').create({
+                                                                                            conn.sobject('FeedItem').create({
                                                                                                 Title: 'Lead Converted: PendingReview',
                                                                                                 ParentId: store.Lead.Id,
                                                                                                 Type: 'AdvancedTextPost',
@@ -617,11 +640,11 @@ module.exports = {
                                                                                                                 .then(postgreMemberNameContact => {
                                                                                                                     if (!postgreMemberNameContact) Contact.update({originalId: store.Contact.Id}, {MemberName__c: store.Contact.FirstName.replace(/ /g, '') + store.Contact.LastName.replace(/ /g, '')});
                                                                                                                     else {
-                                                                                                                        setMemberName(store.Contact, () => {
+                                                                                                                        setMemberIdV2(store.Contact, () => {
                                                                                                                             if (flag.customer) {
                                                                                                                                 FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Customer Added: PendingReview',
                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                         Type: 'AdvanceTextPost',
@@ -629,7 +652,7 @@ module.exports = {
                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                         CreatedById: '005280000053XVoAAM'
                                                                                                                                     });
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Customer Activated: PendingReview',
                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                         Type: 'AdvancedTextPost',
@@ -637,7 +660,7 @@ module.exports = {
                                                                                                                                         Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                     });
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Associate Added: PendingReview',
                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                         Type: 'AdvancedTextPost',
@@ -645,7 +668,7 @@ module.exports = {
                                                                                                                                         Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                     });
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Customer Welcome Message: PendingReview',
                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                         Type: 'AdvancedTextPost',
@@ -657,7 +680,7 @@ module.exports = {
                                                                                                                             } else {
                                                                                                                                 FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Member Added: PendingReview',
                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                         Type: 'AdvanceTextPost',
@@ -665,7 +688,7 @@ module.exports = {
                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                         CreatedById: '05280000053XVoAAM'
                                                                                                                                     });
-                                                                                                                                    Post__c.create({
+                                                                                                                                    FeedItem.create({
                                                                                                                                         Title: 'Member Welcome Message: PendingReview',
                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                         Type: 'AdvancedTextPost',
@@ -715,11 +738,11 @@ module.exports = {
                                                                             .then(postgreMemberNameContact => {
                                                                                 if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                 else {
-                                                                                    setMemberName(postgreContact, () => {
+                                                                                    setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
                                                                                             FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvanceTextPost',
@@ -727,7 +750,7 @@ module.exports = {
                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -735,7 +758,7 @@ module.exports = {
                                                                                                     Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -743,7 +766,7 @@ module.exports = {
                                                                                                     Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                     ParentId: postgreContact.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -755,7 +778,7 @@ module.exports = {
                                                                                         } else {
                                                                                             FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                     Type: 'AdvanceTextPost',
@@ -763,7 +786,7 @@ module.exports = {
                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                 });
-                                                                                                Post__c.create({
+                                                                                                FeedItem.create({
                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                     Type: 'AdvancedTextPost',
@@ -865,7 +888,7 @@ module.exports = {
                                                                                                                             sails.log.info('setting up user flight')
                                                                                                                             FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
                                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                                                     ParentId: store.Contact.Id,
                                                                                                                                     Type: 'AdvanceTextPost',
@@ -873,7 +896,7 @@ module.exports = {
                                                                                                                                     body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                                                 });
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                                                     ParentId: store.Contact.Id,
                                                                                                                                     Type: 'AdvancedTextPost',
@@ -881,7 +904,7 @@ module.exports = {
                                                                                                                                     Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                                 });
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                                                     ParentId: store.Contact.Id,
                                                                                                                                     Type: 'AdvancedTextPost',
@@ -889,7 +912,7 @@ module.exports = {
                                                                                                                                     Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                                 });
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                                                     ParentId: store.Contact.Id,
                                                                                                                                     Type: 'AdvancedTextPost',
@@ -901,7 +924,7 @@ module.exports = {
                                                                                                                         } else {
                                                                                                                             FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
                                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                                                     ParentId: store.Account.Id,
                                                                                                                                     Type: 'AdvanceTextPost',
@@ -909,7 +932,7 @@ module.exports = {
                                                                                                                                     body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                                                 });
-                                                                                                                                Post__c.create({
+                                                                                                                                FeedItem.create({
                                                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                                                     ParentId: store.Account.Id,
                                                                                                                                     Type: 'AdvancedTextPost',
@@ -977,10 +1000,10 @@ module.exports = {
                                                                         store.Account = postgreAccount;
                                                                         flag.postgresAccount = true;
                                                                         flag.sfdcAccount = false;
-                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                                         if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                                                         store.Lead.CRT__c = 'Associate';
-                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') {
                                                                             sails.log.info('account status is inactive');
                                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                                             store.Lead.CRT__c = 'Administrator';
@@ -1005,11 +1028,11 @@ module.exports = {
                                                                                             .then(postgreMemberNameContact => {
                                                                                                 if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                                 else {
-                                                                                                    setMemberName(postgreContact, () => {
+                                                                                                    setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
                                                                                                             FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1017,7 +1040,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1025,7 +1048,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1033,7 +1056,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1045,7 +1068,7 @@ module.exports = {
                                                                                                         } else {
                                                                                                             FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1053,7 +1076,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1100,7 +1123,7 @@ module.exports = {
                                                                                                             } else {
                                                                                                             }
                                                                                                             SegmentService.track(req.user.uid, 'Lead Converted', req.user.email);
-                                                                                                            conn.sobject('Post__c').create({
+                                                                                                            conn.sobject('FeedItem').create({
                                                                                                                 Title: 'Lead Converted: PendingReview',
                                                                                                                 ParentId: store.Lead.Id,
                                                                                                                 Type: 'AdvancedTextPost',
@@ -1127,11 +1150,11 @@ module.exports = {
                                                                                                                                 .then(postgreMemberNameContact => {
                                                                                                                                     if (!postgreMemberNameContact) Contact.update({originalId: store.Contact.Id}, {MemberName__c: store.Contact.FirstName.replace(/ /g, '') + store.Contact.LastName.replace(/ /g, '')});
                                                                                                                                     else {
-                                                                                                                                        setMemberName(store.Contact, () => {
+                                                                                                                                        setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
                                                                                                                                                 FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Added: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvanceTextPost',
@@ -1139,7 +1162,7 @@ module.exports = {
                                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM'
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Activated: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1147,7 +1170,7 @@ module.exports = {
                                                                                                                                                         Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Associate Added: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1155,7 +1178,7 @@ module.exports = {
                                                                                                                                                         Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Welcome Message: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1167,7 +1190,7 @@ module.exports = {
                                                                                                                                             } else {
                                                                                                                                                 FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Member Added: PendingReview',
                                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                                         Type: 'AdvanceTextPost',
@@ -1175,7 +1198,7 @@ module.exports = {
                                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '05280000053XVoAAM'
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Member Welcome Message: PendingReview',
                                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1224,11 +1247,11 @@ module.exports = {
                                                                                             .then(postgreMemberNameContact => {
                                                                                                 if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                                 else {
-                                                                                                    setMemberName(postgreContact, () => {
+                                                                                                    setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
                                                                                                             FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1236,7 +1259,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1244,7 +1267,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1252,7 +1275,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1264,7 +1287,7 @@ module.exports = {
                                                                                                         } else {
                                                                                                             FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1272,7 +1295,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1291,7 +1314,8 @@ module.exports = {
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
                                                                                     return res.ok(postgreContact, 'SUCCESS');
-                                                                                } else {
+                                                                                }
+                                                                                else {
                                                                                     sails.log.info('no postgres contact found');
                                                                                     sails.log.info('calling full contact api');
                                                                                     FullContactService.callCb(req.user.email, (error, success) => {
@@ -1381,7 +1405,7 @@ module.exports = {
                                                                                                                                                     sails.log.info('setting up user flight')
                                                                                                                                                     FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
                                                                                                                                                         SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Customer Added: PendingReview',
                                                                                                                                                             ParentId: store.Contact.Id,
                                                                                                                                                             Type: 'AdvanceTextPost',
@@ -1389,7 +1413,7 @@ module.exports = {
                                                                                                                                                             body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                             CreatedById: '005280000053XVoAAM'
                                                                                                                                                         });
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Customer Activated: PendingReview',
                                                                                                                                                             ParentId: store.Contact.Id,
                                                                                                                                                             Type: 'AdvancedTextPost',
@@ -1397,7 +1421,7 @@ module.exports = {
                                                                                                                                                             Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                                                             CreatedById: '005280000053XVoAAM',
                                                                                                                                                         });
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Associate Added: PendingReview',
                                                                                                                                                             ParentId: store.Contact.Id,
                                                                                                                                                             Type: 'AdvancedTextPost',
@@ -1405,7 +1429,7 @@ module.exports = {
                                                                                                                                                             Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                                                             CreatedById: '005280000053XVoAAM',
                                                                                                                                                         });
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Customer Welcome Message: PendingReview',
                                                                                                                                                             ParentId: store.Contact.Id,
                                                                                                                                                             Type: 'AdvancedTextPost',
@@ -1417,7 +1441,7 @@ module.exports = {
                                                                                                                                                 } else {
                                                                                                                                                     FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
                                                                                                                                                         SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Member Added: PendingReview',
                                                                                                                                                             ParentId: store.Account.Id,
                                                                                                                                                             Type: 'AdvanceTextPost',
@@ -1425,7 +1449,7 @@ module.exports = {
                                                                                                                                                             body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                             CreatedById: '05280000053XVoAAM'
                                                                                                                                                         });
-                                                                                                                                                        Post__c.create({
+                                                                                                                                                        FeedItem.create({
                                                                                                                                                             Title: 'Member Welcome Message: PendingReview',
                                                                                                                                                             ParentId: store.Account.Id,
                                                                                                                                                             Type: 'AdvancedTextPost',
@@ -1453,7 +1477,10 @@ module.exports = {
                                                                                 }
                                                                             })
                                                                     }
-                                                                })
+                                                                }).catch(error=>{
+                                                                    console.log(error);
+                                                                    return res.ok({message: "Server Errro. Please try again later"})
+                                                            })
                                                         }).catch(error => {
                                                         sails.log.info('unable to update');
                                                         res.ok({message: 'Unable to update master postgre lead after merging'}, 'ERROR', 'FAIL');
@@ -1477,10 +1504,10 @@ module.exports = {
                                                                         store.Account = postgreAccount;
                                                                         flag.postgresAccount = true;
                                                                         flag.sfdcAccount = false;
-                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'DISABLED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                                         if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                                                         store.Lead.CRT__c = 'Associate'
-                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACIVE') {
+                                                                        if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') {
                                                                             sails.log.info('account status is inactive');
                                                                             store.Account.StatusPerson__c = 'ACTIVE';
                                                                             store.Lead.CRT__c = 'Administrator';
@@ -1500,11 +1527,11 @@ module.exports = {
                                                                                 .then(postgreMemberNameContact => {
                                                                                     if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                     else {
-                                                                                        setMemberName(postgreContact, () => {
+                                                                                        setMemberIdV2(postgreContact, () => {
                                                                                             if (flag.customer) {
                                                                                                 FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Customer Added: PendingReview',
                                                                                                         ParentId: postgreContact.originalId,
                                                                                                         Type: 'AdvanceTextPost',
@@ -1512,7 +1539,7 @@ module.exports = {
                                                                                                         body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                         CreatedById: '005280000053XVoAAM'
                                                                                                     });
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Customer Activated: PendingReview',
                                                                                                         ParentId: postgreContact.originalId,
                                                                                                         Type: 'AdvancedTextPost',
@@ -1520,7 +1547,7 @@ module.exports = {
                                                                                                         Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                     });
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Associate Added: PendingReview',
                                                                                                         ParentId: postgreContact.originalId,
                                                                                                         Type: 'AdvancedTextPost',
@@ -1528,7 +1555,7 @@ module.exports = {
                                                                                                         Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                     });
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Customer Welcome Message: PendingReview',
                                                                                                         ParentId: postgreContact.originalId,
                                                                                                         Type: 'AdvancedTextPost',
@@ -1540,7 +1567,7 @@ module.exports = {
                                                                                             } else {
                                                                                                 FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Member Added: PendingReview',
                                                                                                         ParentId: postgreAccount.originalId,
                                                                                                         Type: 'AdvanceTextPost',
@@ -1548,7 +1575,7 @@ module.exports = {
                                                                                                         body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                         CreatedById: '05280000053XVoAAM'
                                                                                                     });
-                                                                                                    Post__c.create({
+                                                                                                    FeedItem.create({
                                                                                                         Title: 'Member Welcome Message: PendingReview',
                                                                                                         ParentId: postgreAccount.originalId,
                                                                                                         Type: 'AdvancedTextPost',
@@ -1589,11 +1616,11 @@ module.exports = {
                                                                                             .then(postgreMemberNameContact => {
                                                                                                 if (!postgreMemberNameContact) Contact.update({originalId: postgreContact.originalId}, {MemberName__c: postgreContact.FirstName.replace(/ /g, '') + postgreContact.LastName.replace(/ /g, '')}); //update required
                                                                                                 else {
-                                                                                                    setMemberName(postgreContact, () => {
+                                                                                                    setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
                                                                                                             FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1601,7 +1628,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Activated: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1609,7 +1636,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreContact.originalId, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Associate Added: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1617,7 +1644,7 @@ module.exports = {
                                                                                                                     Body: XmlService.buildForPost(postgreAccount.originalId, postgreAccount.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${postgreContact.FirstName} ${postgreContact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '005280000053XVoAAM',
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Customer Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreContact.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1629,7 +1656,7 @@ module.exports = {
                                                                                                         } else {
                                                                                                             FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvanceTextPost',
@@ -1637,7 +1664,7 @@ module.exports = {
                                                                                                                     body: XmlService.buildForPost(postgreContact.originalId, 'Member', 'created', 'notify', postgreContact.originalId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                     CreatedById: '05280000053XVoAAM'
                                                                                                                 });
-                                                                                                                Post__c.create({
+                                                                                                                FeedItem.create({
                                                                                                                     Title: 'Member Welcome Message: PendingReview',
                                                                                                                     ParentId: postgreAccount.originalId,
                                                                                                                     Type: 'AdvancedTextPost',
@@ -1684,7 +1711,7 @@ module.exports = {
                                                                                                             } else {
                                                                                                             }
                                                                                                             SegmentService.track(req.user.uid, 'Lead Converted', req.user.email);
-                                                                                                            conn.sobject('Post__c').create({
+                                                                                                            conn.sobject('FeedItem').create({
                                                                                                                 Title: 'Lead Converted: PendingReview',
                                                                                                                 ParentId: store.Lead.Id,
                                                                                                                 Type: 'AdvancedTextPost',
@@ -1711,11 +1738,11 @@ module.exports = {
                                                                                                                                 .then(postgreMemberNameContact => {
                                                                                                                                     if (!postgreMemberNameContact) Contact.update({originalId: store.Contact.Id}, {MemberName__c: store.Contact.FirstName.replace(/ /g, '') + store.Contact.LastName.replace(/ /g, '')});
                                                                                                                                     else {
-                                                                                                                                        setMemberName(store.Contact, () => {
+                                                                                                                                        setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
                                                                                                                                                 FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Added: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvanceTextPost',
@@ -1723,7 +1750,7 @@ module.exports = {
                                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'created', 'notify', notifyFeedId, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM'
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Activated: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1731,7 +1758,7 @@ module.exports = {
                                                                                                                                                         Body: XmlService.buildForPost(store.Contact.Id, 'Customer', 'Notify', 'notify', notifyFeedId, 'Account Activated', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Associate Added: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1739,7 +1766,7 @@ module.exports = {
                                                                                                                                                         Body: XmlService.buildForPost(store.Account.Id, store.Account.Name, 'Notify', 'notify', notifyFeedId, `Associate Added: ${store.Contact.FirstName} ${store.Contact.LastName} `, '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '005280000053XVoAAM',
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Customer Welcome Message: PendingReview',
                                                                                                                                                         ParentId: store.Contact.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1751,7 +1778,7 @@ module.exports = {
                                                                                                                                             } else {
                                                                                                                                                 FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Member Added: PendingReview',
                                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                                         Type: 'AdvanceTextPost',
@@ -1759,7 +1786,7 @@ module.exports = {
                                                                                                                                                         body: XmlService.buildForPost(store.Contact.Id, 'Member', 'created', 'notify', store.Contact.Id, 'Account Created', '0012800001a7DInAAE'),
                                                                                                                                                         CreatedById: '05280000053XVoAAM'
                                                                                                                                                     });
-                                                                                                                                                    Post__c.create({
+                                                                                                                                                    FeedItem.create({
                                                                                                                                                         Title: 'Member Welcome Message: PendingReview',
                                                                                                                                                         ParentId: store.Account.Id,
                                                                                                                                                         Type: 'AdvancedTextPost',
@@ -1822,7 +1849,7 @@ setMemberName = (contact, cb) => {
 }
 setMemberIdV2 = (contact, cb) => {
     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
-        var username = contact.FirstName + contact.LastName + shortid.generate();
+        var username = (contact.FirstName + contact.LastName).replace(/ /g,'') + shortid.generate();
         conn.sobject('Contact').update({Id: contact.Id, MemberName__c: username})
             .then(response => {
                 contact.MemberName__c = username;

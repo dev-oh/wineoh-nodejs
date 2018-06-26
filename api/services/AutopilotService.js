@@ -12,7 +12,6 @@ module.exports = {
                 'autopilotapikey': CREDS.autopilotCreds.apiKey
             }}, function (error, response, body) {
             if(error) return sails.log.info('error while starting autopilot journey');
-            console.log(body);
             if(response.statusCode === 200) return sails.log.info('started');
             return sails.log.info('autopilot journey startup fail');
         });
