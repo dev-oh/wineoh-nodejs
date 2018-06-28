@@ -381,7 +381,7 @@ module.exports = {
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
-                                            if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED') {
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED') {
                                                 Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'});
                                                 return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                             }
