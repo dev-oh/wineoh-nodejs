@@ -980,9 +980,10 @@ module.exports = {
                                                 sails.log.info('applying merge mechanism');
                                                 SfdcService.mergeSfdcLeads(sfdcLead, (masterPostgreLead, duplicates) => {
                                                     sails.log.info('applied');
-                                                    sails.log.info('updating master postgres lead');
+
                                                     store.Lead = masterPostgreLead;
                                                     masterPostgreLead = FilterService.cleanLead(masterPostgreLead);
+                                                    sails.log.info('updating master sfdc lead');
                                                     conn.sobject('Lead').update(masterPostgreLead)
                                                         .then(result => {
                                                             sails.log.info('sfdc lead updated');

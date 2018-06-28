@@ -317,8 +317,7 @@ module.exports = {
         DOB__pc : "date",
         FeedNotification__c: 'string',
         Id : {
-            type: "integer",
-            columnName: 'id'
+            type: "integer"
         },
     }
 };
