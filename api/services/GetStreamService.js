@@ -15,5 +15,9 @@ module.exports = {
             if(err) return console.log(err)
             console.log('Notification added');
         });
+    },
+    follow: (masterGroup,masterId,slaveGroup,slaveId)=>{
+    	var slave = client.feed(slaveGroup,slaveId);
+    	slave.follow(masterGroup,masterId);
     }
 }

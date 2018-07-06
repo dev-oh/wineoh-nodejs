@@ -17,7 +17,7 @@ module.exports = {
     attributes: {
         OwnerId: {
             type: 'string',
-            defaultsTo: ''
+            defaultsTo: '005280000053XVoAAM'
         },
         IsDeleted:{
             type: "boolean",

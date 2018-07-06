@@ -1,0 +1,15 @@
+{
+  "plugins": {
+    "guess-types": {
+      
+    },
+    "doc_comment": {
+      "strong": true
+    }
+  },
+  "libs": [
+    "ecma5",
+    "browser"
+  ],
+  "ecmaVersion": 6
+}
