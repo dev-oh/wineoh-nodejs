@@ -385,9 +385,13 @@ module.exports = {
                                                 Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'});
                                                 return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                             }
-                                            if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                            if (postgreContact.Onboarding__c) {
+                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                return res.ok(postgreContact, 'SUCCESS');
+                                            }
                                             sails.log.info('starting asutopilot journy');
                                             AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                             return res.ok(postgreContact, 'SUCCESS');
                                         })
                                 } else {
@@ -397,9 +401,13 @@ module.exports = {
                                     if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
                                     if (postgreContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
                                     if (postgreContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
-                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                    if (postgreContact.Onboarding__c) {
+                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                        return res.ok(postgreContact, 'SUCCESS');
+                                    }
                                     sails.log.info('starting asutopilot journy');
                                     AutopilotService.startJourny(postgreContact.Email, 'member');
+                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                     return res.ok(postgreContact, 'SUCCESS');
                                 }
                             } else {
@@ -432,9 +440,13 @@ module.exports = {
                                                             conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'RECOVERY'});
                                                             return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                                         }
-                                                        if (sfdcContact.Onboarding__c) return res.ok(sfdcContact, 'SUCCESS');
+                                                        if (sfdcContact.Onboarding__c) {
+                                                            sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                            return res.ok(sfdcContact, 'SUCCESS');
+                                                        }
                                                         sails.log.info('starting asutopilot journy');
                                                         AutopilotService.startJourny(sfdcContact.Email, 'customer');
+                                                        sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                         return res.ok(sfdcContact, 'SUCCESS');
                                                     });
                                             } else {
@@ -444,9 +456,13 @@ module.exports = {
                                                 if (sfdcContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                 if (sfdcContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                 if (sfdcContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
-                                                if (sfdcContact.Onboarding__c) return res.ok(sfdcContact, 'SUCCESS');
+                                                if (sfdcContact.Onboarding__c) {
+                                                    sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                    return res.ok(sfdcContact, 'SUCCESS');
+                                                }
                                                 sails.log.info('starting autopilot journey');
                                                 AutopilotService.startJourny(sfdcContact.Email, 'member');
+                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                 return res.ok(sfdcContact, 'SUCCESS');
                                             }
                                         }).catch(error=>{
@@ -581,9 +597,13 @@ module.exports = {
                                                                             });
                                                                     }
                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                    if (postgreContact.Onboarding__c) {
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                        return res.ok(postgreContact, 'SUCCESS');
+                                                                    }
                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                 } else {
                                                                     sails.log.info('no postgres contact found');
@@ -703,9 +723,13 @@ module.exports = {
                                                                                                                 });
                                                                                                         }
                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                        if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
+                                                                                                        if (store.Contact.Onboarding__c) {
+                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                            return res.ok(store.Contact, 'SUCCESS');
+                                                                                                        }
                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                     })
                                                                                             });
@@ -801,9 +825,13 @@ module.exports = {
                                                                             });
                                                                     }
                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                    if (postgreContact.Onboarding__c) {
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                        return res.ok(postgreContact, 'SUCCESS');
+                                                                    }
                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                 } else {
                                                                     sails.log.info('no postgres contact found');
@@ -945,9 +973,13 @@ module.exports = {
                                                                                                                     });
                                                                                                                 }
                                                                                                                 FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                                if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                if (store.Contact.Onboarding__c) {
+                                                                                                                    store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                    return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                }
                                                                                                                 if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                 else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                                store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                                 return res.ok(store.Contact, 'SUCCESS');
                                                                                                             });
                                                                                                     });
@@ -1092,9 +1124,13 @@ module.exports = {
                                                                                             });
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                                    if (postgreContact.Onboarding__c) {
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        return res.ok(postgreContact, 'SUCCESS');
+                                                                                    }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 } else {
                                                                                     sails.log.info('no postgres contact found');
@@ -1214,9 +1250,13 @@ module.exports = {
                                                                                                                                 });
                                                                                                                         }
                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                                        if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                        if (store.Contact.Onboarding__c) {
+                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                            return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                        }
                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                     })
                                                                                                             });
@@ -1311,9 +1351,13 @@ module.exports = {
                                                                                             });
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                                    if (postgreContact.Onboarding__c) {
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        return res.ok(postgreContact, 'SUCCESS');
+                                                                                    }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 }
                                                                                 else {
@@ -1463,9 +1507,13 @@ module.exports = {
                                                                                                                                             });
                                                                                                                                         }
                                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                                                        if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                                        if (store.Contact.Onboarding__c) {
+                                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                                            return res.ok(store.Contact, 'SUCCESS');
+                                                                                                                                        }
                                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                                     });
                                                                                                                             });
@@ -1591,9 +1639,13 @@ module.exports = {
                                                                                 });
                                                                         }
                                                                         FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                        if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                        if (postgreContact.Onboarding__c) {
+                                                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                            return res.ok(postgreContact, 'SUCCESS');
+                                                                        }
                                                                         if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                         else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                     } else {
                                                                         sails.log.info('postgres account not exist');
@@ -1680,9 +1732,13 @@ module.exports = {
                                                                                             });
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
-                                                                                    if (postgreContact.Onboarding__c) return res.ok(postgreContact, 'SUCCESS');
+                                                                                    if (postgreContact.Onboarding__c) {
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        return res.ok(postgreContact, 'SUCCESS');
+                                                                                    }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 } else {
                                                                                     sails.log.info('no postgres contact found');
@@ -1802,9 +1858,11 @@ module.exports = {
                                                                                                                                 });
                                                                                                                         }
                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                                         if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                     })
                                                                                                             });
