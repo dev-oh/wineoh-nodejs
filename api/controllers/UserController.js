@@ -344,6 +344,7 @@ module.exports = {
     },
 
 
+
     signin: (req, res) => {
         var store = {};
         var flag = {};
@@ -378,12 +379,12 @@ module.exports = {
                                             if (postgreAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it'}, 'AC_ON-HOLD', 'FAIL');
                                             if (postgreAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') Account.update({originalId: postgreContact.AccountId}, {StatusAccount__c: 'ACTIVE'});
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
+                                            if (postgreContact.StatusPerson__c.toUpperCase() === 'RECOVERY') Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'}); //update required
                                             if (postgreContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED') {
-                                                Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'});
-                                                return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
+                                                Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'});
+                                                return res.ok({message: 'Your password has been expired. A password reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                             }
                                             if (postgreContact.Onboarding__c) {
                                                 postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
@@ -398,9 +399,9 @@ module.exports = {
                                     sails.log.info('user is member');
                                     SegmentService.track(req.user.uid, 'Member Login', req.user.email);
                                     if (postgreContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                    if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                    if (postgreContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                    if (postgreContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
+                                    if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
+                                    if (postgreContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
+                                    if (postgreContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
                                     if (postgreContact.Onboarding__c) {
                                         postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                         return res.ok(postgreContact, 'SUCCESS');
@@ -431,14 +432,14 @@ module.exports = {
                                                         sails.log.info('contact status is ' + sfdcContact.StatusPerson__c);
                                                         if (sfdcAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                         if (sfdcAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it.'}, 'AC_ON-HOLD', 'FAIL');
-                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') conn.sobject('Account').update({Id: sfdcAccount.Id,StatusAccount__c: 'ACTIVE'}).then(result=>{console.log(result)});
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') conn.sobject('Account').update({Id: sfdcAccount.Id,StatusAccount__c: 'ACTIVE'}).then(result=>{});
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'ACTIVE'});
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED'){
                                                             conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'RECOVERY'});
-                                                            return res.ok({message: 'Your password has been expired. A passwor reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
+                                                            return res.ok({message: 'Your password has been expired. A password reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                                         }
                                                         if (sfdcContact.Onboarding__c) {
                                                             sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
@@ -453,9 +454,9 @@ module.exports = {
                                                 sails.log.info('user is member');
                                                 SegmentService.track(req.user.uid, 'Member Login', req.user.email);
                                                 if (sfdcContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                if (sfdcContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                if (sfdcContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'SUSPENDED', 'FAIL');
-                                                if (sfdcContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
+                                                if (sfdcContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
+                                                if (sfdcContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
+                                                if (sfdcContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
                                                 if (sfdcContact.Onboarding__c) {
                                                     sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
                                                     return res.ok(sfdcContact, 'SUCCESS');
@@ -902,7 +903,6 @@ module.exports = {
                                                                                                                     store.Account = sfdcAccount;
                                                                                                                     flag.sfdcAccount = true;
                                                                                                                 }
-                                                                                                                // console.log({account: store.Account,contact:store.Contact})
                                                                                                                 if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                     sails.log.info('no FeedNotification__c in account');
                                                                                                                     sails.log.info('user is customer and now seting up company flight');
@@ -994,7 +994,6 @@ module.exports = {
                                                 });
                                         }).catch(error => {
                                         sails.log.info('unable to update');
-                                        console.log(error);
                                         res.ok({message: 'Unable to update master postgre lead after merging'}, 'ERROR', 'FAIL')
                                     });
                                 })
@@ -1012,14 +1011,13 @@ module.exports = {
                                                 sails.log.info('applying merge mechanism');
                                                 SfdcService.mergeSfdcLeads(sfdcLead, (masterPostgreLead, duplicates) => {
                                                     sails.log.info('applied');
-
                                                     store.Lead = masterPostgreLead;
                                                     masterPostgreLead = FilterService.cleanLead(masterPostgreLead);
                                                     sails.log.info('updating master sfdc lead');
                                                     conn.sobject('Lead').update(masterPostgreLead)
                                                         .then(result => {
                                                             sails.log.info('sfdc lead updated');
-                                                            sails.log.info('updated')
+                                                            sails.log.info('updated');
                                                             sails.log.info('deleting duplicates');
                                                             conn.sobject('Lead').del(duplicates);
                                                             sails.log.info('saving lead to store');
@@ -1436,7 +1434,6 @@ module.exports = {
                                                                                                                                             store.Account = sfdcAccount;
                                                                                                                                             flag.sfdcAccount = true;
                                                                                                                                         }
-                                                                                                                                        // console.log({account: store.Account,contact:store.Contact})
                                                                                                                                         if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                                             sails.log.info('no FeedNotification__c in account')
                                                                                                                                             sails.log.info('user is customer and now seting up company flight');
@@ -1527,7 +1524,6 @@ module.exports = {
                                                                             })
                                                                     }
                                                                 }).catch(error=>{
-                                                                    console.log(error);
                                                                     return res.ok({message: "Server Errro. Please try again later"})
                                                             })
                                                         }).catch(error => {
@@ -1900,12 +1896,12 @@ setMemberName = (contact, cb) => {
     Contact.findOne({MemberName__c: newMemberName})
         .then(postgreContactByMemberName => {
             if (!postgreContactByMemberName) {
-                return Contact.update({ContactId: contactId}, {MemberName__c: newMemberName});
+                return Contact.update({ContactId: store.contactId}, {MemberName__c: newMemberName});
                 cb();
             }
             else setMemberName(contact);
         })
-}
+};
 setMemberIdV2 = (contact, cb) => {
     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
         var username = (contact.FirstName + contact.LastName).replace(/ /g,'') + shortid.generate();
