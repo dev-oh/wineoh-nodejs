@@ -529,7 +529,13 @@ module.exports = {
                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                        // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                        });
+                                                                    }
                                                                     if (!postgreContact.MemberName__c) {
                                                                         Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                             .then(postgreMemberNameContact => {
@@ -537,7 +543,13 @@ module.exports = {
                                                                                 else {
                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
-                                                                                            FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                    .then(flight=>{
+                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                    });
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                 FeedItem.create({
                                                                                                     Title: 'Customer Added: PendingReview',
@@ -573,7 +585,13 @@ module.exports = {
                                                                                                 });
                                                                                             });
                                                                                         } else {
-                                                                                            FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                    .then(flight=>{
+                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                    });
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                 FeedItem.create({
                                                                                                     Title: 'Member Added: PendingReview',
@@ -655,7 +673,13 @@ module.exports = {
                                                                                                         if (sfdcContact) store.Contact = sfdcContact;
 
                                                                                                         //pending
-                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) {
+                                                                                                            // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                            });
+                                                                                                        }
                                                                                                         if (!store.Contact.MemberName__c) {
                                                                                                             Contact.findOne({MemberName__c: store.Contact.FirstName + store.Contact.LastName})
                                                                                                                 .then(postgreMemberNameContact => {
@@ -663,7 +687,13 @@ module.exports = {
                                                                                                                     else {
                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                             if (flag.customer) {
-                                                                                                                                FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                        .then(flight=>{
+                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                        });
                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                     FeedItem.create({
                                                                                                                                         Title: 'Customer Added: PendingReview',
@@ -699,7 +729,13 @@ module.exports = {
                                                                                                                                     });
                                                                                                                                 });
                                                                                                                             } else {
-                                                                                                                                FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                        .then(flight=>{
+                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                        });
                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                     FeedItem.create({
                                                                                                                                         Title: 'Member Added: PendingReview',
@@ -757,7 +793,13 @@ module.exports = {
                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                        // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                        });
+                                                                    }
                                                                     if (!postgreContact.MemberName__c) {
                                                                         Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                             .then(postgreMemberNameContact => {
@@ -765,7 +807,13 @@ module.exports = {
                                                                                 else {
                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
-                                                                                            FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                    .then(flight=>{
+                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                    });
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                 FeedItem.create({
                                                                                                     Title: 'Customer Added: PendingReview',
@@ -801,7 +849,13 @@ module.exports = {
                                                                                                 });
                                                                                             });
                                                                                         } else {
-                                                                                            FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                    .then(flight=>{
+                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                    });
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                 FeedItem.create({
                                                                                                     Title: 'Member Added: PendingReview',
@@ -906,15 +960,25 @@ module.exports = {
                                                                                                                 if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                     sails.log.info('no FeedNotification__c in account');
                                                                                                                     sails.log.info('user is customer and now seting up company flight');
-                                                                                                                    FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                    // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                    FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                                                        GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                                                        GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                    });
                                                                                                                 }
                                                                                                                 if (!store.Contact.MemberName__c) {
                                                                                                                     sails.log.info('no MemberName__c in contact');
                                                                                                                     setMemberIdV2(store.Contact, (updatedContact) => {
                                                                                                                         store.Contact = updatedContact;
                                                                                                                         if (flag.customer) {
-                                                                                                                            sails.log.info('setting up user flight')
-                                                                                                                            FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                            sails.log.info('setting up user flight');
+                                                                                                                            FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                    .then(flight=>{
+                                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                    });
                                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                 FeedItem.create({
                                                                                                                                     Title: 'Customer Added: PendingReview',
@@ -950,7 +1014,13 @@ module.exports = {
                                                                                                                                 });
                                                                                                                             });
                                                                                                                         } else {
-                                                                                                                            FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                            FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                    .then(flight=>{
+                                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                    });
                                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                 FeedItem.create({
                                                                                                                                     Title: 'Member Added: PendingReview',
@@ -1053,7 +1123,13 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                                        // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        });
+                                                                                    }
                                                                                     if (!postgreContact.MemberName__c) {
                                                                                         Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                                             .then(postgreMemberNameContact => {
@@ -1061,7 +1137,13 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
@@ -1097,7 +1179,13 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
@@ -1179,7 +1267,13 @@ module.exports = {
                                                                                                                         if (sfdcContact) store.Contact = sfdcContact;
 
                                                                                                                         //pending
-                                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) {
+                                                                                                                            // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                            });
+                                                                                                                        }
                                                                                                                         if (!store.Contact.MemberName__c) {
                                                                                                                             Contact.findOne({MemberName__c: store.Contact.FirstName + store.Contact.LastName})
                                                                                                                                 .then(postgreMemberNameContact => {
@@ -1187,7 +1281,13 @@ module.exports = {
                                                                                                                                     else {
                                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
-                                                                                                                                                FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                        .then(flight=>{
+                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                        });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                     FeedItem.create({
                                                                                                                                                         Title: 'Customer Added: PendingReview',
@@ -1223,7 +1323,13 @@ module.exports = {
                                                                                                                                                     });
                                                                                                                                                 });
                                                                                                                                             } else {
-                                                                                                                                                FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                        .then(flight=>{
+                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                        });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                     FeedItem.create({
                                                                                                                                                         Title: 'Member Added: PendingReview',
@@ -1280,7 +1386,13 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                                        // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                        FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        });
+                                                                                    }
                                                                                     if (!postgreContact.MemberName__c) {
                                                                                         Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                                             .then(postgreMemberNameContact => {
@@ -1288,7 +1400,13 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
@@ -1324,7 +1442,13 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
@@ -1437,7 +1561,11 @@ module.exports = {
                                                                                                                                         if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                                             sails.log.info('no FeedNotification__c in account')
                                                                                                                                             sails.log.info('user is customer and now seting up company flight');
-                                                                                                                                            FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                                            // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                                            });
                                                                                                                                         }
                                                                                                                                         if (!store.Contact.MemberName__c) {
                                                                                                                                             sails.log.info('no MemberName__c in contact')
@@ -1445,7 +1573,13 @@ module.exports = {
                                                                                                                                                 store.Contact = updatedContact;
                                                                                                                                                 if (flag.customer) {
                                                                                                                                                     sails.log.info('setting up user flight')
-                                                                                                                                                    FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                                                    FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                        GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                        GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                        Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                            .then(flight=>{
+                                                                                                                                                                GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                            });
                                                                                                                                                         SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                         FeedItem.create({
                                                                                                                                                             Title: 'Customer Added: PendingReview',
@@ -1481,7 +1615,13 @@ module.exports = {
                                                                                                                                                         });
                                                                                                                                                     });
                                                                                                                                                 } else {
-                                                                                                                                                    FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                                                    FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                        GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                        GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                        Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                            .then(flight=>{
+                                                                                                                                                                GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                            });
                                                                                                                                                         SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                         FeedItem.create({
                                                                                                                                                             Title: 'Member Added: PendingReview',
@@ -1566,7 +1706,13 @@ module.exports = {
                                                                         if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                         if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                         if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                        if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                        if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                            // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                            FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                            });
+                                                                        }
                                                                         if (!postgreContact.MemberName__c) {
                                                                             Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                                 .then(postgreMemberNameContact => {
@@ -1574,7 +1720,13 @@ module.exports = {
                                                                                     else {
                                                                                         setMemberIdV2(postgreContact, () => {
                                                                                             if (flag.customer) {
-                                                                                                FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                                FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                    Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                        .then(flight=>{
+                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                        });
                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                     FeedItem.create({
                                                                                                         Title: 'Customer Added: PendingReview',
@@ -1610,7 +1762,13 @@ module.exports = {
                                                                                                     });
                                                                                                 });
                                                                                             } else {
-                                                                                                FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                                FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                    Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                        .then(flight=>{
+                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                        });
                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                     FeedItem.create({
                                                                                                         Title: 'Member Added: PendingReview',
@@ -1659,7 +1817,13 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
-                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                    if (flag.customer && !postgreAccount.FeedNotification__c) {
+                                                                                        // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
+                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        });
+                                                                                    }
                                                                                     if (!postgreContact.MemberName__c) {
                                                                                         Contact.findOne({MemberName__c: postgreContact.FirstName + postgreContact.LastName})
                                                                                             .then(postgreMemberNameContact => {
@@ -1667,7 +1831,13 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlight('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Customer Added: PendingReview',
@@ -1703,7 +1873,13 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlight('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId) => {
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                    .then(flight=>{
+                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                    });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
                                                                                                                     Title: 'Member Added: PendingReview',
@@ -1785,7 +1961,13 @@ module.exports = {
                                                                                                                         if (sfdcContact) store.Contact = sfdcContact;
 
                                                                                                                         //pending
-                                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                        if (flag.customer && !store.Account.FeedNotification__c) {
+                                                                                                                            // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
+                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
+                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
+                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                            });
+                                                                                                                        }
                                                                                                                         if (!store.Contact.MemberName__c) {
                                                                                                                             Contact.findOne({MemberName__c: store.Contact.FirstName + store.Contact.LastName})
                                                                                                                                 .then(postgreMemberNameContact => {
@@ -1793,7 +1975,13 @@ module.exports = {
                                                                                                                                     else {
                                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
-                                                                                                                                                FlightService.setupUserFlight('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId) => {
+                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                        .then(flight=>{
+                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                        });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                     FeedItem.create({
                                                                                                                                                         Title: 'Customer Added: PendingReview',
@@ -1829,7 +2017,13 @@ module.exports = {
                                                                                                                                                     });
                                                                                                                                                 });
                                                                                                                                             } else {
-                                                                                                                                                FlightService.setupUserFlight('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId) => {
+                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
+                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
+                                                                                                                                                        .then(flight=>{
+                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                        });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                     FeedItem.create({
                                                                                                                                                         Title: 'Member Added: PendingReview',

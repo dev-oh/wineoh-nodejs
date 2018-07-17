@@ -21,7 +21,7 @@ module.exports = {
       connection: 'postgreSql',
       // connection: 'postgreSqlProd'
       // connection: 'localDiskDb'
-  }
+  },
 
   /***************************************************************************
    * Set the port in the production environment to 80                        *
@@ -36,5 +36,11 @@ module.exports = {
   // log: {
   //   level: "silent"
   // }
+
+  ssl: {
+      ca: require('fs').readFileSync(require('path').resolve(__dirname,'../secrets/api.signature.cert')),
+      key: require('fs').readFileSync(require('path').resolve(__dirname,'../secrets/api.private.key')),
+      cert: require('fs').readFileSync(require('path').resolve(__dirname,'../secrets/api.server.cert'))
+  },
 
 };

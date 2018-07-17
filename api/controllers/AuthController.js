@@ -1273,6 +1273,7 @@ module.exports = {
                                                 return res.ok({message: 'SUCCESS'}, 'SUCCESS')
                                             });
                                     } else {
+                                        sails.log.info("contact not exist");
                                         Lead.findOne({Email: lead.Email})
                                             .then(postgreLeads => {
                                                 if (postgreLeads) {
