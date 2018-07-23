@@ -44,7 +44,8 @@
   "scripts": {
     "debug": "node debug app.js",
     "start": "node app.js",
-    "startProduction": "sails lift --prod --port 80"
+    "startProduction": "sails lift --prod --port 80",
+    "startSSLProduction": "sails lift --prod --port 443"
   },
   "main": "app.js"
 }
