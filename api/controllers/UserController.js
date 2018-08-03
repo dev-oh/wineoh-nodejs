@@ -314,7 +314,7 @@ module.exports = {
     getTeam: (req, res) => {
         Contact.findOne({uid__c: req.user.uid})
             .then(user => {
-                if(user){
+                if (user) {
                     Contact.find({AccountId: user.AccountId})
                         .then(users => {
                             var response = _.groupBy(users, e => {
@@ -324,12 +324,12 @@ module.exports = {
                         }).catch(error => {
                         res.ok(error, 'SERVER_ERROR', 'FAIL');
                     })
-                }else{
+                } else {
                     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
                         conn.sobject('Contact').findOne({uid__c: req.user.uid})
-                            .then(user=>{
+                            .then(user => {
                                 conn.sobject('Contact').find({AccountId: user.AccountId})
-                                    .then(users=>{
+                                    .then(users => {
                                         var response = _.groupBy(users, e => {
                                             return e.StatusPerson__c
                                         });
@@ -342,8 +342,15 @@ module.exports = {
             res.ok(error, 'SERVER_ERROR', 'FAIL')
         })
     },
-
-
+    update: (req, res) => {
+        delete req.body.uid__c;
+        Contact.update({uid__c: req.user.uid}, req.body).then(updatedUser => {
+            res.ok(updatedUser)
+        }).catch(error => {
+            console.log(error);
+            res.ok(error, 'ERROR', 'FAIL');
+        })
+    },
 
     signin: (req, res) => {
         var store = {};
@@ -387,12 +394,12 @@ module.exports = {
                                                 return res.ok({message: 'Your password has been expired. A password reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                             }
                                             if (postgreContact.Onboarding__c) {
-                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                 return res.ok(postgreContact, 'SUCCESS');
                                             }
                                             sails.log.info('starting asutopilot journy');
                                             AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                             return res.ok(postgreContact, 'SUCCESS');
                                         })
                                 } else {
@@ -403,19 +410,19 @@ module.exports = {
                                     if (postgreContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
                                     if (postgreContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
                                     if (postgreContact.Onboarding__c) {
-                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                         return res.ok(postgreContact, 'SUCCESS');
                                     }
                                     sails.log.info('starting asutopilot journy');
                                     AutopilotService.startJourny(postgreContact.Email, 'member');
-                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                     return res.ok(postgreContact, 'SUCCESS');
                                 }
                             } else {
                                 sails.log.info('postgres contact not exist');
                                 sails.log.info('connecting to the sfdc server');
                                 conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
-                                    if(error) sails.log.info("Unable to connect to sfdc");
+                                    if (error) sails.log.info("Unable to connect to sfdc");
                                     else sails.log.info('connected');
                                     conn.sobject('Contact').findOne({uid__c: req.user.uid})
                                         .then(sfdcContact => {
@@ -432,22 +439,32 @@ module.exports = {
                                                         sails.log.info('contact status is ' + sfdcContact.StatusPerson__c);
                                                         if (sfdcAccount.StatusAccount__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your company\'s account has been temporarily been suspended. Contact Support to re-activate it'}, 'AC_SUSPENDED', 'FAIL');
                                                         if (sfdcAccount.StatusAccount__c.toUpperCase() === 'ON-HOLD') return res.ok({message: 'Your company\'s account is on hold. Contact Support to re-activate it.'}, 'AC_ON-HOLD', 'FAIL');
-                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') conn.sobject('Account').update({Id: sfdcAccount.Id,StatusAccount__c: 'ACTIVE'}).then(result=>{});
+                                                        if (sfdcAccount.StatusAccount__c.toUpperCase() === 'INACTIVE') conn.sobject('Account').update({
+                                                            Id: sfdcAccount.Id,
+                                                            StatusAccount__c: 'ACTIVE'
+                                                        }).then(result => {
+                                                        });
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
                                                         if (sfdcContact.StatusPerson__c.toUpperCase() === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
-                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'ACTIVE'});
-                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED'){
-                                                            conn.sobject('Contact').update({Id: sfdcContact.Id,StatusPerson__c: 'RECOVERY'});
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'RECOVERY') conn.sobject('Contact').update({
+                                                            Id: sfdcContact.Id,
+                                                            StatusPerson__c: 'ACTIVE'
+                                                        });
+                                                        if (sfdcContact.StatusPerson__c.toUpperCase() === 'PW_EXPIRED') {
+                                                            conn.sobject('Contact').update({
+                                                                Id: sfdcContact.Id,
+                                                                StatusPerson__c: 'RECOVERY'
+                                                            });
                                                             return res.ok({message: 'Your password has been expired. A password reset email has been sent to your email.'}, 'PW_EXPIRED', 'FAIL');
                                                         }
                                                         if (sfdcContact.Onboarding__c) {
-                                                            sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                            sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                             return res.ok(sfdcContact, 'SUCCESS');
                                                         }
                                                         sails.log.info('starting asutopilot journy');
                                                         AutopilotService.startJourny(sfdcContact.Email, 'customer');
-                                                        sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                        sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                         return res.ok(sfdcContact, 'SUCCESS');
                                                     });
                                             } else {
@@ -458,17 +475,17 @@ module.exports = {
                                                 if (sfdcContact.StatusPerson__c === 'LOCKED_OUT') return res.ok({message: 'Your account is locked. Contact Support'}, 'LOCKED_OUT', 'FAIL');
                                                 if (sfdcContact.StatusPerson__c === 'RECOVERY') Contact.update({ContactId: store.contactId}, {StatusPerson__c: 'ACTIVE'}); //update reqquired
                                                 if (sfdcContact.Onboarding__c) {
-                                                    sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                    sfdcContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                     return res.ok(sfdcContact, 'SUCCESS');
                                                 }
                                                 sails.log.info('starting autopilot journey');
                                                 AutopilotService.startJourny(sfdcContact.Email, 'member');
-                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                 return res.ok(sfdcContact, 'SUCCESS');
                                             }
-                                        }).catch(error=>{
-                                            sails.log.info('unable to find contact');
-                                            return res.ok('Unable to fetch data from sfdc','ERROR','FAIL');
+                                        }).catch(error => {
+                                        sails.log.info('unable to find contact');
+                                        return res.ok('Unable to fetch data from sfdc', 'ERROR', 'FAIL');
                                     });
                                 });
                             }
@@ -525,15 +542,17 @@ module.exports = {
                                                                     if (postgreContact.StatusPerson__c === 'UNPROVISIONED') return res.ok({message: 'Your account isn\'t provisioned. Contact Support'}, 'UNPROVISIONED', 'FAIL');
                                                                     if (postgreContact.StatusPerson__c === 'SUSPENDED') return res.ok({message: 'Your account is suspended. Contact Support'}, 'SUSPENDED', 'FAIL');
                                                                     if (postgreContact.StatusPerson__c === 'DEPROVISIONED') return res.ok({message: 'Your account has been deprovisioned. Contact Support'}, 'DEPROVISIONED', 'FAIL');
-                                                                    if (postgreContact.StatusPerson__c === 'PW_EXPIRED'){} store.Contact.StatusPerson__c = 'RECOVERY'; // reset password and then change Status to Recovery // update required
+                                                                    if (postgreContact.StatusPerson__c === 'PW_EXPIRED') {
+                                                                    }
+                                                                    store.Contact.StatusPerson__c = 'RECOVERY'; // reset password and then change Status to Recovery // update required
                                                                     if (postgreContact.StatusPerson__c === 'PROVISIONED') store.Contact.StatusPerson__c = 'ACTIVE'; // reset password and then change Status to ACTIVE // update required
                                                                     if (postgreContact.StatusPerson__c === 'STAGED') store.Contact.StatusPerson__c = 'PROVISIONED'; //set password and change status to active // update required
                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                     if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                         // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                            GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                            GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                         });
                                                                     }
                                                                     if (!postgreContact.MemberName__c) {
@@ -543,12 +562,16 @@ module.exports = {
                                                                                 else {
                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
-                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                    .then(flight=>{
-                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                Flight__c.findOne({
+                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                    Type__c: 'Flat',
+                                                                                                    FeedGroup__c: 'company'
+                                                                                                })
+                                                                                                    .then(flight => {
+                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                     });
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                 FeedItem.create({
@@ -585,12 +608,16 @@ module.exports = {
                                                                                                 });
                                                                                             });
                                                                                         } else {
-                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                    .then(flight=>{
-                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                Flight__c.findOne({
+                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                    Type__c: 'Flat',
+                                                                                                    FeedGroup__c: 'company'
+                                                                                                })
+                                                                                                    .then(flight => {
+                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                     });
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                 FeedItem.create({
@@ -617,12 +644,12 @@ module.exports = {
                                                                     }
                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                     if (postgreContact.Onboarding__c) {
-                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                     }
                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                 } else {
                                                                     sails.log.info('no postgres contact found');
@@ -675,9 +702,9 @@ module.exports = {
                                                                                                         //pending
                                                                                                         if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                             // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                                                GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                                             });
                                                                                                         }
                                                                                                         if (!store.Contact.MemberName__c) {
@@ -687,12 +714,16 @@ module.exports = {
                                                                                                                     else {
                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                             if (flag.customer) {
-                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                        .then(flight=>{
-                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                    Flight__c.findOne({
+                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                    })
+                                                                                                                                        .then(flight => {
+                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                         });
                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                     FeedItem.create({
@@ -729,12 +760,16 @@ module.exports = {
                                                                                                                                     });
                                                                                                                                 });
                                                                                                                             } else {
-                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                        .then(flight=>{
-                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                    Flight__c.findOne({
+                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                    })
+                                                                                                                                        .then(flight => {
+                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                         });
                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                     FeedItem.create({
@@ -761,12 +796,12 @@ module.exports = {
                                                                                                         }
                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
                                                                                                         if (store.Contact.Onboarding__c) {
-                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                             return res.ok(store.Contact, 'SUCCESS');
                                                                                                         }
                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                     })
                                                                                             });
@@ -795,9 +830,9 @@ module.exports = {
                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                     if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                         // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                            GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                            GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                         });
                                                                     }
                                                                     if (!postgreContact.MemberName__c) {
@@ -807,12 +842,16 @@ module.exports = {
                                                                                 else {
                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                         if (flag.customer) {
-                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                    .then(flight=>{
-                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                Flight__c.findOne({
+                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                    Type__c: 'Flat',
+                                                                                                    FeedGroup__c: 'company'
+                                                                                                })
+                                                                                                    .then(flight => {
+                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                     });
                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                 FeedItem.create({
@@ -849,12 +888,16 @@ module.exports = {
                                                                                                 });
                                                                                             });
                                                                                         } else {
-                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                    .then(flight=>{
-                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                Flight__c.findOne({
+                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                    Type__c: 'Flat',
+                                                                                                    FeedGroup__c: 'company'
+                                                                                                })
+                                                                                                    .then(flight => {
+                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                     });
                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                 FeedItem.create({
@@ -881,12 +924,12 @@ module.exports = {
                                                                     }
                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                     if (postgreContact.Onboarding__c) {
-                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                     }
                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                 } else {
                                                                     sails.log.info('no postgres contact found');
@@ -961,9 +1004,9 @@ module.exports = {
                                                                                                                     sails.log.info('no FeedNotification__c in account');
                                                                                                                     sails.log.info('user is customer and now seting up company flight');
                                                                                                                     // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                                    FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                                                        GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                                                        GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                    FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                                                        GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                                                        GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                                                     });
                                                                                                                 }
                                                                                                                 if (!store.Contact.MemberName__c) {
@@ -972,12 +1015,16 @@ module.exports = {
                                                                                                                         store.Contact = updatedContact;
                                                                                                                         if (flag.customer) {
                                                                                                                             sails.log.info('setting up user flight');
-                                                                                                                            FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                    .then(flight=>{
-                                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                            FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                Flight__c.findOne({
+                                                                                                                                    OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                    Type__c: 'Flat',
+                                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                                })
+                                                                                                                                    .then(flight => {
+                                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                     });
                                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                 FeedItem.create({
@@ -1014,12 +1061,16 @@ module.exports = {
                                                                                                                                 });
                                                                                                                             });
                                                                                                                         } else {
-                                                                                                                            FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                    .then(flight=>{
-                                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                            FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                Flight__c.findOne({
+                                                                                                                                    OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                    Type__c: 'Flat',
+                                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                                })
+                                                                                                                                    .then(flight => {
+                                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                     });
                                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                 FeedItem.create({
@@ -1044,12 +1095,12 @@ module.exports = {
                                                                                                                 }
                                                                                                                 FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
                                                                                                                 if (store.Contact.Onboarding__c) {
-                                                                                                                    store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                    store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                     return res.ok(store.Contact, 'SUCCESS');
                                                                                                                 }
                                                                                                                 if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                 else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                                store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                 return res.ok(store.Contact, 'SUCCESS');
                                                                                                             });
                                                                                                     });
@@ -1125,9 +1176,9 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                                     if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                                         // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                            GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                            GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                         });
                                                                                     }
                                                                                     if (!postgreContact.MemberName__c) {
@@ -1137,12 +1188,16 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1179,12 +1234,16 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1211,12 +1270,12 @@ module.exports = {
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                                     if (postgreContact.Onboarding__c) {
-                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                                     }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 } else {
                                                                                     sails.log.info('no postgres contact found');
@@ -1269,9 +1328,9 @@ module.exports = {
                                                                                                                         //pending
                                                                                                                         if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                             // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                                                                GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                                                             });
                                                                                                                         }
                                                                                                                         if (!store.Contact.MemberName__c) {
@@ -1281,12 +1340,16 @@ module.exports = {
                                                                                                                                     else {
                                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
-                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                        .then(flight=>{
-                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                    Flight__c.findOne({
+                                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                                    })
+                                                                                                                                                        .then(flight => {
+                                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                         });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                     FeedItem.create({
@@ -1323,12 +1386,16 @@ module.exports = {
                                                                                                                                                     });
                                                                                                                                                 });
                                                                                                                                             } else {
-                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                        .then(flight=>{
-                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                    Flight__c.findOne({
+                                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                                    })
+                                                                                                                                                        .then(flight => {
+                                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                         });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                     FeedItem.create({
@@ -1355,12 +1422,12 @@ module.exports = {
                                                                                                                         }
                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
                                                                                                                         if (store.Contact.Onboarding__c) {
-                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                             return res.ok(store.Contact, 'SUCCESS');
                                                                                                                         }
                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                     })
                                                                                                             });
@@ -1388,9 +1455,9 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                                     if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                                         // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                                        FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                            GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                            GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                         });
                                                                                     }
                                                                                     if (!postgreContact.MemberName__c) {
@@ -1400,12 +1467,16 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1442,12 +1513,16 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1474,12 +1549,12 @@ module.exports = {
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                                     if (postgreContact.Onboarding__c) {
-                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                                     }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 }
                                                                                 else {
@@ -1562,9 +1637,9 @@ module.exports = {
                                                                                                                                             sails.log.info('no FeedNotification__c in account')
                                                                                                                                             sails.log.info('user is customer and now seting up company flight');
                                                                                                                                             // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                                                                                GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                                                                             });
                                                                                                                                         }
                                                                                                                                         if (!store.Contact.MemberName__c) {
@@ -1573,12 +1648,16 @@ module.exports = {
                                                                                                                                                 store.Contact = updatedContact;
                                                                                                                                                 if (flag.customer) {
                                                                                                                                                     sails.log.info('setting up user flight')
-                                                                                                                                                    FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                        GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                        GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                        Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                            .then(flight=>{
-                                                                                                                                                                GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                    FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                        GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                        GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                        Flight__c.findOne({
+                                                                                                                                                            OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                            Type__c: 'Flat',
+                                                                                                                                                            FeedGroup__c: 'company'
+                                                                                                                                                        })
+                                                                                                                                                            .then(flight => {
+                                                                                                                                                                GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                             });
                                                                                                                                                         SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                         FeedItem.create({
@@ -1615,12 +1694,16 @@ module.exports = {
                                                                                                                                                         });
                                                                                                                                                     });
                                                                                                                                                 } else {
-                                                                                                                                                    FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                        GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                        GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                        Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                            .then(flight=>{
-                                                                                                                                                                GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                    FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                        GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                        GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                        Flight__c.findOne({
+                                                                                                                                                            OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                            Type__c: 'Flat',
+                                                                                                                                                            FeedGroup__c: 'company'
+                                                                                                                                                        })
+                                                                                                                                                            .then(flight => {
+                                                                                                                                                                GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                             });
                                                                                                                                                         SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                         FeedItem.create({
@@ -1645,12 +1728,12 @@ module.exports = {
                                                                                                                                         }
                                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
                                                                                                                                         if (store.Contact.Onboarding__c) {
-                                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                                            store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                                             return res.ok(store.Contact, 'SUCCESS');
                                                                                                                                         }
                                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                                     });
                                                                                                                             });
@@ -1663,8 +1746,8 @@ module.exports = {
                                                                                 }
                                                                             })
                                                                     }
-                                                                }).catch(error=>{
-                                                                    return res.ok({message: "Server Errro. Please try again later"})
+                                                                }).catch(error => {
+                                                                return res.ok({message: "Server Errro. Please try again later"})
                                                             })
                                                         }).catch(error => {
                                                         sails.log.info('unable to update');
@@ -1708,9 +1791,9 @@ module.exports = {
                                                                         if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                         if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                             // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                            FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                            FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                             });
                                                                         }
                                                                         if (!postgreContact.MemberName__c) {
@@ -1720,12 +1803,16 @@ module.exports = {
                                                                                     else {
                                                                                         setMemberIdV2(postgreContact, () => {
                                                                                             if (flag.customer) {
-                                                                                                FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                    Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                        .then(flight=>{
-                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                    Flight__c.findOne({
+                                                                                                        OwnerAccount__c: postgreContact.AccountId,
+                                                                                                        Type__c: 'Flat',
+                                                                                                        FeedGroup__c: 'company'
+                                                                                                    })
+                                                                                                        .then(flight => {
+                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                         });
                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                     FeedItem.create({
@@ -1762,12 +1849,16 @@ module.exports = {
                                                                                                     });
                                                                                                 });
                                                                                             } else {
-                                                                                                FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                    Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                        .then(flight=>{
-                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                    Flight__c.findOne({
+                                                                                                        OwnerAccount__c: postgreContact.AccountId,
+                                                                                                        Type__c: 'Flat',
+                                                                                                        FeedGroup__c: 'company'
+                                                                                                    })
+                                                                                                        .then(flight => {
+                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                         });
                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                     FeedItem.create({
@@ -1794,12 +1885,12 @@ module.exports = {
                                                                         }
                                                                         FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                         if (postgreContact.Onboarding__c) {
-                                                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                            postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                             return res.ok(postgreContact, 'SUCCESS');
                                                                         }
                                                                         if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                         else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                     } else {
                                                                         sails.log.info('postgres account not exist');
@@ -1819,9 +1910,9 @@ module.exports = {
                                                                                     if (postgreContact.StatusPerson__c === 'RECOVERY') store.Contact.StatusPerson__c = 'ACTIVE';
                                                                                     if (flag.customer && !postgreAccount.FeedNotification__c) {
                                                                                         // FlightService.setupCompanyFlight(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId);
-                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                            GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                            GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                        FlightService.setupCompanyProfileAsync(postgreContact.PartnerId__c, postgreAccount.Name, postgreAccount.originalId, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                            GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                            GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                         });
                                                                                     }
                                                                                     if (!postgreContact.MemberName__c) {
@@ -1831,12 +1922,16 @@ module.exports = {
                                                                                                 else {
                                                                                                     setMemberIdV2(postgreContact, () => {
                                                                                                         if (flag.customer) {
-                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('customer', postgreContact.MemberId__c, postgreContact.MemberName__c, postgreContact.originalId, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1873,12 +1968,16 @@ module.exports = {
                                                                                                                 });
                                                                                                             });
                                                                                                         } else {
-                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                Flight__c.findOne({OwnerAccount__c : postgreContact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                    .then(flight=>{
-                                                                                                                        GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                            FlightService.setupUserFlightAsync('member', postgreContact.MemberId__pc, postgreContact.MemberName__pc, null, postgreContact.originalId, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                Flight__c.findOne({
+                                                                                                                    OwnerAccount__c: postgreContact.AccountId,
+                                                                                                                    Type__c: 'Flat',
+                                                                                                                    FeedGroup__c: 'company'
+                                                                                                                })
+                                                                                                                    .then(flight => {
+                                                                                                                        GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                     });
                                                                                                                 SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                 FeedItem.create({
@@ -1905,12 +2004,12 @@ module.exports = {
                                                                                     }
                                                                                     FirebaseService.updateUser(req.user.uid, {memberId: postgreContact.MemberId__c});
                                                                                     if (postgreContact.Onboarding__c) {
-                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                        postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                         return res.ok(postgreContact, 'SUCCESS');
                                                                                     }
                                                                                     if (postgreContact.CRT__c === 'Member') AutopilotService.startJourny(postgreContact.Email, 'member');
                                                                                     else AutopilotService.startJourny(postgreContact.Email, 'customer');
-                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                    postgreContact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                     return res.ok(postgreContact, 'SUCCESS');
                                                                                 } else {
                                                                                     sails.log.info('no postgres contact found');
@@ -1963,9 +2062,9 @@ module.exports = {
                                                                                                                         //pending
                                                                                                                         if (flag.customer && !store.Account.FeedNotification__c) {
                                                                                                                             // FlightService.setupCompanyFlight(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id);
-                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id,(companyId,timelineId,timelineAggregateId,fyiId)=>{
-                                                                                                                                GetStreamService.follow('timeline',timelineId, 'time_agg',timelineAggregateId);
-                                                                                                                                GetStreamService.follow('company','1_051818_0000000002', 'timeline',timelineId);
+                                                                                                                            FlightService.setupCompanyProfileAsync(store.Contact.PartnerId__c, store.Account.Name, store.Account.Id, (companyId, timelineId, timelineAggregateId, fyiId) => {
+                                                                                                                                GetStreamService.follow('timeline', timelineId, 'time_agg', timelineAggregateId);
+                                                                                                                                GetStreamService.follow('company', '1_051818_0000000002', 'timeline', timelineId);
                                                                                                                             });
                                                                                                                         }
                                                                                                                         if (!store.Contact.MemberName__c) {
@@ -1975,12 +2074,16 @@ module.exports = {
                                                                                                                                     else {
                                                                                                                                         setMemberIdV2(store.Contact, () => {
                                                                                                                                             if (flag.customer) {
-                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                        .then(flight=>{
-                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                FlightService.setupUserFlightAsync('customer', store.Contact.MemberId__c, store.Contact.MemberName__c, store.Contact.Id, null, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                    Flight__c.findOne({
+                                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                                    })
+                                                                                                                                                        .then(flight => {
+                                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                         });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Customer Added', req.user.email);
                                                                                                                                                     FeedItem.create({
@@ -2017,12 +2120,16 @@ module.exports = {
                                                                                                                                                     });
                                                                                                                                                 });
                                                                                                                                             } else {
-                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId,userGroupId,userTimelineId,userTimelineAggregateId) => {
-                                                                                                                                                    GetStreamService.follow('timeline',userTimelineId,'time_agg',userTimelineAggregateId);
-                                                                                                                                                    GetStreamService.follow('company','1_051818_0000000002','timeline',userTimelineId );
-                                                                                                                                                    Flight__c.findOne({OwnerAccount__c : store.Contact.AccountId,Type__c: 'Flat',FeedGroup__c: 'company'})
-                                                                                                                                                        .then(flight=>{
-                                                                                                                                                            GetStreamService.follow('company',flight.Id,'timeline',userTimelineId);
+                                                                                                                                                FlightService.setupUserFlightAsync('member', store.Contact.MemberId__pc, store.Contact.MemberName__pc, null, store.Contact.Id, (notifyFeedId, userGroupId, userTimelineId, userTimelineAggregateId) => {
+                                                                                                                                                    GetStreamService.follow('timeline', userTimelineId, 'time_agg', userTimelineAggregateId);
+                                                                                                                                                    GetStreamService.follow('company', '1_051818_0000000002', 'timeline', userTimelineId);
+                                                                                                                                                    Flight__c.findOne({
+                                                                                                                                                        OwnerAccount__c: store.Contact.AccountId,
+                                                                                                                                                        Type__c: 'Flat',
+                                                                                                                                                        FeedGroup__c: 'company'
+                                                                                                                                                    })
+                                                                                                                                                        .then(flight => {
+                                                                                                                                                            GetStreamService.follow('company', flight.Id, 'timeline', userTimelineId);
                                                                                                                                                         });
                                                                                                                                                     SegmentService.track(req.user.uid, 'Member Added', req.user.email);
                                                                                                                                                     FeedItem.create({
@@ -2048,11 +2155,11 @@ module.exports = {
                                                                                                                                 });
                                                                                                                         }
                                                                                                                         FirebaseService.updateUser(req.user.uid, {memberId: store.Contact.MemberId__c});
-                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                         if (store.Contact.Onboarding__c) return res.ok(store.Contact, 'SUCCESS');
                                                                                                                         if (store.Contact.CRT__c === 'Member') AutopilotService.startJourny(store.Contact.Email, 'member');
                                                                                                                         else AutopilotService.startJourny(store.Contact.Email, 'customer');
-                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email,req.user.name,req.user.picture);
+                                                                                                                        store.Contact.zendeskUrl = ZendeskService.getUrl(req.user.email, req.user.name, req.user.picture);
                                                                                                                         return res.ok(store.Contact, 'SUCCESS');
                                                                                                                     })
                                                                                                             });
@@ -2098,7 +2205,7 @@ setMemberName = (contact, cb) => {
 };
 setMemberIdV2 = (contact, cb) => {
     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
-        var username = (contact.FirstName + contact.LastName).replace(/ /g,'') + shortid.generate();
+        var username = (contact.FirstName + contact.LastName).replace(/ /g, '') + shortid.generate();
         conn.sobject('Contact').update({Id: contact.Id, MemberName__c: username})
             .then(response => {
                 contact.MemberName__c = username;
