@@ -312,11 +312,14 @@ module.exports = {
         })
     },
     getTeam: (req, res) => {
+        sails.log.info('finding contact in postgres')
         Contact.findOne({uid__c: req.user.uid})
             .then(user => {
                 if (user) {
+                    sails.log.info('contact found');
                     Contact.find({AccountId: user.AccountId})
                         .then(users => {
+                            sails.log.info('contact found with same account');
                             var response = _.groupBy(users, e => {
                                 return e.StatusPerson__c
                             });
@@ -324,10 +327,16 @@ module.exports = {
                         }).catch(error => {
                         res.ok(error, 'SERVER_ERROR', 'FAIL');
                     })
-                } else {
+                }
+                else {
+                    sails.log.info('contact not found');
+                    sails.log.info('connecting to sfdc');
                     conn.login(Creds.salesforceCreds.email, Creds.salesforceCreds.password, (error, info) => {
+                        sails.log.info('connected to sfdc');
+                        sails.log.info('searching for contact');
                         conn.sobject('Contact').findOne({uid__c: req.user.uid})
                             .then(user => {
+                                sails.log.info('searching done');
                                 conn.sobject('Contact').find({AccountId: user.AccountId})
                                     .then(users => {
                                         var response = _.groupBy(users, e => {
